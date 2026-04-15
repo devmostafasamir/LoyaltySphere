@@ -12,6 +12,7 @@ public class Campaign : Entity
     public string CampaignName { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public string CampaignType { get; private set; } = "Bonus"; // Bonus, Multiplier, Cashback, Referral
+    public int Priority { get; private set; } = 0; // Higher priority campaigns are evaluated first
     public decimal BonusPoints { get; private set; }
     public decimal? PointsMultiplier { get; private set; }
     public decimal? CashbackPercentage { get; private set; }
@@ -34,6 +35,7 @@ public class Campaign : Entity
         string campaignType,
         DateTime startDate,
         DateTime endDate,
+        int priority = 0,
         decimal bonusPoints = 0,
         decimal? pointsMultiplier = null,
         decimal? cashbackPercentage = null,
@@ -47,6 +49,7 @@ public class Campaign : Entity
         CampaignName = campaignName;
         Description = description;
         CampaignType = campaignType;
+        Priority = priority;
         StartDate = startDate;
         EndDate = endDate;
         BonusPoints = bonusPoints;

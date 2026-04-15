@@ -1,0 +1,60 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8E9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{9E9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingBlocks", "{AE9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{BE9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoyaltySphere.RewardService", "src\Services\RewardService\LoyaltySphere.RewardService.csproj", "{CE9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoyaltySphere.RewardService.Tests", "tests\LoyaltySphere.RewardService.Tests\LoyaltySphere.RewardService.Tests.csproj", "{DE9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoyaltySphere.Common", "src\BuildingBlocks\Common\LoyaltySphere.Common.csproj", "{FE9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoyaltySphere.EventBus", "src\BuildingBlocks\EventBus\LoyaltySphere.EventBus.csproj", "{0F9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoyaltySphere.MultiTenancy", "src\BuildingBlocks\MultiTenancy\LoyaltySphere.MultiTenancy.csproj", "{1F9A4F1A-1234-4567-89AB-123456789ABC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CE9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F9A4F1A-1234-4567-89AB-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F9A4F1A-1234-4567-89AB-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9E9A4F1A-1234-4567-89AB-123456789ABC} = {8E9A4F1A-1234-4567-89AB-123456789ABC}
+		{AE9A4F1A-1234-4567-89AB-123456789ABC} = {8E9A4F1A-1234-4567-89AB-123456789ABC}
+		{CE9A4F1A-1234-4567-89AB-123456789ABC} = {9E9A4F1A-1234-4567-89AB-123456789ABC}
+		{DE9A4F1A-1234-4567-89AB-123456789ABC} = {BE9A4F1A-1234-4567-89AB-123456789ABC}
+		{FE9A4F1A-1234-4567-89AB-123456789ABC} = {AE9A4F1A-1234-4567-89AB-123456789ABC}
+		{0F9A4F1A-1234-4567-89AB-123456789ABC} = {AE9A4F1A-1234-4567-89AB-123456789ABC}
+		{1F9A4F1A-1234-4567-89AB-123456789ABC} = {AE9A4F1A-1234-4567-89AB-123456789ABC}
+	EndGlobalSection
+EndGlobal

@@ -1,5 +1,6 @@
 using LoyaltySphere.MultiTenancy;
 using LoyaltySphere.RewardService.Domain.Entities;
+using LoyaltySphere.RewardService.Infrastructure.Persistence.Interceptors;
 using LoyaltySphere.EventBus.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -14,16 +15,16 @@ namespace LoyaltySphere.RewardService.Infrastructure.Persistence;
 public class ApplicationDbContext : DbContext
 {
     private readonly ITenantContext _tenantContext;
-    private readonly ILogger<ApplicationDbContext> _logger;
+    private readonly ILoggerFactory _loggerFactory;
 
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options,
         ITenantContext tenantContext,
-        ILogger<ApplicationDbContext> logger)
+        ILoggerFactory loggerFactory)
         : base(options)
     {
         _tenantContext = tenantContext;
-        _logger = logger;
+        _loggerFactory = loggerFactory;
     }
 
     // Domain entities
@@ -75,11 +76,10 @@ public class ApplicationDbContext : DbContext
     {
         base.OnConfiguring(optionsBuilder);
 
-        // Add interceptor to set tenant_id on save
-        optionsBuilder.AddInterceptors(new TenantInterceptor(_tenantContext, _logger));
-        
-        // Add interceptor to populate outbox messages
-        optionsBuilder.AddInterceptors(new OutboxInterceptor(_logger));
+        // Add interceptors - create loggers from factory
+        optionsBuilder.AddInterceptors(
+            new TenantInterceptor(_tenantContext, _loggerFactory.CreateLogger<TenantInterceptor>()),
+            new OutboxInterceptor(_loggerFactory.CreateLogger<OutboxInterceptor>()));
 
         // Enable sensitive data logging in development
         if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
@@ -103,7 +103,8 @@ public class ApplicationDbContext : DbContext
         // Set PostgreSQL session variable that RLS policies will use
         var sql = $"SET app.current_tenant = '{_tenantContext.TenantId}';";
         
-        _logger.LogDebug("Setting PostgreSQL tenant context: {TenantId}", _tenantContext.TenantId);
+        var logger = _loggerFactory.CreateLogger<ApplicationDbContext>();
+        logger.LogDebug("Setting PostgreSQL tenant context: {TenantId}", _tenantContext.TenantId);
         
         await Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }

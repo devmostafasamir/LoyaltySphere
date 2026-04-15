@@ -8,10 +8,9 @@ public class TenantContext : ITenantContext
 {
     private TenantInfo? _currentTenant;
 
-    public TenantInfo? CurrentTenant => _currentTenant;
+    public TenantInfo? TenantInfo => _currentTenant;
 
-    public string TenantId => _currentTenant?.Id 
-        ?? throw new InvalidOperationException("Tenant has not been resolved for this request");
+    public string? TenantId => _currentTenant?.Id;
 
     public bool HasTenant => _currentTenant != null;
 

@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using LoyaltySphere.MultiTenancy;
 using LoyaltySphere.RewardService.Application.Commands.CalculateReward;
 using LoyaltySphere.RewardService.Application.Commands.RedeemPoints;

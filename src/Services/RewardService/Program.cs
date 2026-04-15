@@ -1,8 +1,10 @@
 using LoyaltySphere.MultiTenancy;
+using LoyaltySphere.MultiTenancy.Middleware;
 using LoyaltySphere.RewardService.Api.Middleware;
 using LoyaltySphere.RewardService.Application.Services;
 using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using LoyaltySphere.RewardService.Infrastructure.SignalR;
+using Asp.Versioning;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -122,7 +124,7 @@ builder.Services.AddAuthorization();
 // API Versioning
 builder.Services.AddApiVersioning(options =>
 {
-    options.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
     options.AssumeDefaultVersionWhenUnspecified = true;
     options.ReportApiVersions = true;
 });
@@ -193,10 +195,10 @@ builder.Services.AddCors(options =>
 });
 
 // Health Checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
-    .AddRedis(builder.Configuration.GetConnectionString("Redis")!)
-    .AddRabbitMQ(rabbitConnectionString: builder.Configuration["RabbitMQ:ConnectionString"]!);
+builder.Services.AddHealthChecks();
+    // .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!) // Requires AspNetCore.HealthChecks.Npgsql package
+    // .AddRedis(builder.Configuration.GetConnectionString("Redis")!) // Requires AspNetCore.HealthChecks.Redis package
+    // .AddRabbitMQ(rabbitConnectionString: builder.Configuration["RabbitMQ:ConnectionString"]!); // Requires AspNetCore.HealthChecks.RabbitMQ package
 
 // ============================================
 // Build Application

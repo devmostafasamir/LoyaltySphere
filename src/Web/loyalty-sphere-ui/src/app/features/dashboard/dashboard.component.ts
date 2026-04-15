@@ -99,56 +99,56 @@ import { ToastService } from '../../core/services/toast.service';
             Recent Activity
           </h3>
           
-          <div class="space-y-3">
-            @if (recentTransactions().length === 0) {
-              <div class="text-center py-12 text-slate-500">
-                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                </svg>
-                <p>No recent transactions</p>
-              </div>
-            } @else {
+          @if (recentTransactions().length === 0) {
+            <div class="text-center py-12 text-slate-500">
+              <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+              </svg>
+              <p>No recent transactions</p>
+            </div>
+          }
+          
+          @if (recentTransactions().length > 0) {
+            <div class="space-y-3">
               @for (transaction of recentTransactions(); track transaction.id) {
-                <div 
-                  class="flex items-center justify-between p-4 rounded-lg bg-slate-900/50 border border-slate-800 hover:border-crimson-500/50 transition-all duration-300 animate-fadeIn">
+                <div class="flex items-center justify-between p-4 rounded-lg bg-slate-900/50 border border-slate-800 hover:border-crimson-500/50 transition-all duration-300 animate-fadeIn">
                   <div class="flex items-center gap-4">
-                    <!-- Icon -->
-                    <div 
-                      class="w-10 h-10 rounded-full flex items-center justify-center"
-                      [class.bg-emerald-500/20]="transaction.type === 'Earned'"
-                      [class.bg-crimson-500/20]="transaction.type === 'Redeemed'">
-                      @if (transaction.type === 'Earned') {
+                    @if (transaction.type === 'Earned') {
+                      <div class="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-500/20">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                      } @else {
+                      </div>
+                    }
+                    @if (transaction.type === 'Redeemed') {
+                      <div class="w-10 h-10 rounded-full flex items-center justify-center bg-crimson-500/20">
                         <svg class="w-5 h-5 text-crimson-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
                         </svg>
-                      }
-                    </div>
-                    
-                    <!-- Details -->
+                      </div>
+                    }
                     <div>
                       <p class="font-semibold">{{ transaction.description }}</p>
                       <p class="text-sm text-slate-400">{{ transaction.timestamp | date:'short' }}</p>
                     </div>
                   </div>
-                  
-                  <!-- Points -->
                   <div class="text-right">
-                    <p 
-                      class="text-xl font-bold"
-                      [class.text-emerald-500]="transaction.type === 'Earned'"
-                      [class.text-crimson-500]="transaction.type === 'Redeemed'">
-                      {{ transaction.type === 'Earned' ? '+' : '-' }}{{ transaction.points.toLocaleString() }}
-                    </p>
+                    @if (transaction.type === 'Earned') {
+                      <p class="text-xl font-bold text-emerald-500">
+                        +{{ transaction.points.toLocaleString() }}
+                      </p>
+                    }
+                    @if (transaction.type === 'Redeemed') {
+                      <p class="text-xl font-bold text-crimson-500">
+                        -{{ transaction.points.toLocaleString() }}
+                      </p>
+                    }
                     <p class="text-xs text-slate-500">{{ transaction.type }}</p>
                   </div>
                 </div>
               }
-            }
-          </div>
+            </div>
+          }
         </div>
       </main>
 

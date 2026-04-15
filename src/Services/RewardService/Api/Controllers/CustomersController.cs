@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using LoyaltySphere.MultiTenancy;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Infrastructure.Persistence;

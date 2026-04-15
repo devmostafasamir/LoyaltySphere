@@ -53,15 +53,15 @@ public class ExceptionHandlingMiddleware
         // Determine status code and error details
         var (statusCode, title, detail) = exception switch
         {
-            ArgumentException argEx => (
-                HttpStatusCode.BadRequest,
-                "Invalid Argument",
-                argEx.Message
-            ),
             ArgumentNullException nullEx => (
                 HttpStatusCode.BadRequest,
                 "Missing Required Field",
                 nullEx.Message
+            ),
+            ArgumentException argEx => (
+                HttpStatusCode.BadRequest,
+                "Invalid Argument",
+                argEx.Message
             ),
             InvalidOperationException opEx => (
                 HttpStatusCode.BadRequest,

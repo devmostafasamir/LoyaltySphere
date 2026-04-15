@@ -68,7 +68,10 @@ public class TenantResolutionMiddleware
         }
 
         // Set tenant context for the request
-        tenantContext.SetTenant(tenantInfo);
+        if (tenantContext is TenantContext concreteContext)
+        {
+            concreteContext.SetTenant(tenantInfo);
+        }
         
         _logger.LogInformation(
             "Tenant resolved: {TenantId} - {TenantName}",
