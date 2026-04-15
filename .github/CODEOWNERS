@@ -1,0 +1,26 @@
+# CODEOWNERS file for LoyaltySphere
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @Mostafa-SAID7
+
+# Backend services
+/src/Services/ @Mostafa-SAID7
+/src/BuildingBlocks/ @Mostafa-SAID7
+
+# Frontend
+/src/Web/ @Mostafa-SAID7
+
+# Infrastructure & DevOps
+/deployment/ @Mostafa-SAID7
+/.github/ @Mostafa-SAID7
+/docker-compose.yml @Mostafa-SAID7
+
+# Documentation
+/docs/ @Mostafa-SAID7
+*.md @Mostafa-SAID7
+
+# Configuration files
+*.json @Mostafa-SAID7
+*.yml @Mostafa-SAID7
+*.yaml @Mostafa-SAID7

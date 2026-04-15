@@ -136,12 +136,6 @@ jobs:
           - name: reward-service
             context: .
             dockerfile: src/Services/RewardService/Dockerfile
-          - name: transaction-service
-            context: .
-            dockerfile: src/Services/TransactionService/Dockerfile
-          - name: api-gateway
-            context: .
-            dockerfile: src/Services/ApiGateway/Dockerfile
           - name: frontend
             context: src/Web/loyalty-sphere-ui
             dockerfile: src/Web/loyalty-sphere-ui/Dockerfile
@@ -220,15 +214,11 @@ jobs:
           kubectl apply -f deployment/k8s/rabbitmq/
           kubectl apply -f deployment/k8s/redis/
           kubectl apply -f deployment/k8s/reward-service/
-          kubectl apply -f deployment/k8s/transaction-service/
-          kubectl apply -f deployment/k8s/api-gateway/
           kubectl apply -f deployment/k8s/frontend/
 
       - name: Wait for deployment
         run: |
           kubectl rollout status deployment/reward-service -n loyalty-sphere --timeout=5m
-          kubectl rollout status deployment/transaction-service -n loyalty-sphere --timeout=5m
-          kubectl rollout status deployment/api-gateway -n loyalty-sphere --timeout=5m
           kubectl rollout status deployment/frontend -n loyalty-sphere --timeout=5m
 
       - name: Verify deployment
@@ -260,10 +250,6 @@ jobs:
       - name: Test Reward Service health
         run: |
           curl -f https://api.loyaltysphere.example.com/api/rewards/health || exit 1
-
-      - name: Test Transaction Service health
-        run: |
-          curl -f https://api.loyaltysphere.example.com/api/transactions/health || exit 1
 
       - name: Test Frontend
         run: |

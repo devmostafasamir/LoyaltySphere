@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/Mostafa-SAID7/national-bank/blob/main/README.md
+    about: Check the documentation for answers
+  - name: 💬 Discussions
+    url: https://github.com/Mostafa-SAID7/national-bank/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🔒 Security Issue
+    url: https://github.com/Mostafa-SAID7/national-bank/security/advisories/new
+    about: Report a security vulnerability privately
