@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loyalty-sphere-config
+  namespace: loyalty-sphere
+data:
+  # Application Settings
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://+:5000"
+  
+  # Logging
+  Serilog__MinimumLevel__Default: "Information"
+  Serilog__MinimumLevel__Override__Microsoft: "Warning"
+  
+  # Cache Settings
+  Cache__DefaultExpirationMinutes: "60"
+  Cache__RewardRulesExpirationMinutes: "120"
+  
+  # Resilience Settings
+  Resilience__RetryCount: "3"
+  Resilience__RetryDelaySeconds: "2"
+  
+  # Outbox Settings
+  Outbox__ProcessingIntervalSeconds: "10"
+  Outbox__BatchSize: "100"
+  
+  # SignalR Settings
+  SignalR__KeepAliveIntervalSeconds: "15"
+  SignalR__ClientTimeoutSeconds: "30"
+  
+  # CORS
+  Cors__AllowedOrigins__0: "https://loyaltysphere.example.com"
+  
+  # Tenants
+  Tenants__NationalBank__Id: "national-bank"
+  Tenants__NationalBank__Name: "National Bank of Egypt"
+  Tenants__NationalBank__IsActive: "true"
+  Tenants__SuezBank__Id: "suez-bank"
+  Tenants__SuezBank__Name: "Suez Canal Bank"
+  Tenants__SuezBank__IsActive: "true"

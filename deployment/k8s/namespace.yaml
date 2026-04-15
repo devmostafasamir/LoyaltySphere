@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: loyalty-sphere
+  labels:
+    name: loyalty-sphere
+    environment: production
+    app: loyaltysphere
