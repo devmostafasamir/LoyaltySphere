@@ -1,0 +1,275 @@
+version: '3.8'
+
+# LoyaltySphere - Multi-Tenant Loyalty Platform
+# One-command setup: docker compose up -d
+
+services:
+  # ============================================
+  # PostgreSQL Database with RLS
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: loyalty-postgres
+    environment:
+      POSTGRES_DB: loyalty_sphere
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deployment/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./deployment/scripts/setup-rls.sql:/docker-entrypoint-initdb.d/02-setup-rls.sql
+      - ./deployment/scripts/seed-data.sql:/docker-entrypoint-initdb.d/03-seed-data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - loyalty-network
+
+  # ============================================
+  # RabbitMQ Message Broker
+  # ============================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: loyalty-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - loyalty-network
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: loyalty-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - loyalty-network
+
+  # ============================================
+  # Reward Service (Microservice)
+  # ============================================
+  reward-service:
+    build:
+      context: .
+      dockerfile: src/Services/RewardService/Dockerfile
+    container_name: loyalty-reward-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=loyalty_sphere;Username=postgres;Password=postgres"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: guest
+      RabbitMQ__Password: guest
+      Redis__ConnectionString: "redis:6379"
+      OpenTelemetry__ServiceName: reward-service
+      OpenTelemetry__Endpoint: http://jaeger:4317
+    ports:
+      - "5001:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+  # ============================================
+  # Transaction Service (Microservice)
+  # ============================================
+  transaction-service:
+    build:
+      context: .
+      dockerfile: src/Services/TransactionService/Dockerfile
+    container_name: loyalty-transaction-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=loyalty_sphere;Username=postgres;Password=postgres"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: guest
+      RabbitMQ__Password: guest
+      OpenTelemetry__ServiceName: transaction-service
+      OpenTelemetry__Endpoint: http://jaeger:4317
+    ports:
+      - "5002:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+  # ============================================
+  # API Gateway (Ocelot)
+  # ============================================
+  api-gateway:
+    build:
+      context: .
+      dockerfile: src/Services/ApiGateway/Dockerfile
+    container_name: loyalty-api-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+    ports:
+      - "5000:80"
+    depends_on:
+      - reward-service
+      - transaction-service
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+  # ============================================
+  # Angular Frontend
+  # ============================================
+  frontend:
+    build:
+      context: ./src/Web/loyalty-sphere-ui
+      dockerfile: Dockerfile
+    container_name: loyalty-frontend
+    environment:
+      NODE_ENV: production
+      API_URL: http://api-gateway:80
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+  # ============================================
+  # Jaeger (Distributed Tracing) - Optional
+  # ============================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: loyalty-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      - loyalty-network
+
+  # ============================================
+  # Prometheus (Metrics) - Optional
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: loyalty-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deployment/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - loyalty-network
+
+  # ============================================
+  # Grafana (Dashboards) - Optional
+  # ============================================
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: loyalty-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deployment/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./deployment/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - loyalty-network
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  loyalty-network:
+    driver: bridge
+    name: loyalty-network
+
+# ============================================
+# Volumes (Persistent Data)
+# ============================================
+volumes:
+  postgres-data:
+    name: loyalty-postgres-data
+  rabbitmq-data:
+    name: loyalty-rabbitmq-data
+  redis-data:
+    name: loyalty-redis-data
+  prometheus-data:
+    name: loyalty-prometheus-data
+  grafana-data:
+    name: loyalty-grafana-data
+
+# ============================================
+# USAGE:
+# ============================================
+# Start all services:
+#   docker compose up -d
+#
+# View logs:
+#   docker compose logs -f
+#
+# Stop all services:
+#   docker compose down
+#
+# Stop and remove volumes:
+#   docker compose down -v
+#
+# Rebuild services:
+#   docker compose up -d --build
+#
+# Access services:
+#   - Frontend: http://localhost:4200
+#   - API Gateway: http://localhost:5000
+#   - Reward Service: http://localhost:5001
+#   - Transaction Service: http://localhost:5002
+#   - RabbitMQ Management: http://localhost:15672 (guest/guest)
+#   - Jaeger UI: http://localhost:16686
+#   - Prometheus: http://localhost:9090
+#   - Grafana: http://localhost:3000 (admin/admin)
+# ============================================
