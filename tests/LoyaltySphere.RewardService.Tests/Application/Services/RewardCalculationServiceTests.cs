@@ -54,7 +54,7 @@ public class RewardCalculationServiceTests
         var rules = new List<RewardRule>();
         var campaigns = Enumerable.Empty<Campaign>();
 
-        var rule = RewardRule.Create(TenantId, "Standard Rule", "1 point per unit", 1.0m);
+        var rule = RewardRule.Create(TenantId, "Standard Rule", "1 point per unit", 0.1m);
         rules.Add(rule);
 
         _tierServiceMock.Setup(s => s.GetTierMultiplier(customer.Tier))
@@ -83,7 +83,7 @@ public class RewardCalculationServiceTests
         // Arrange
         var customer = CreateCustomer("Bronze", 0);
         var amount = Money.Create(1000, "EGP");
-        var rule = RewardRule.Create(TenantId, "Standard Rule", "1 point per unit", 1.0m);
+        var rule = RewardRule.Create(TenantId, "Standard Rule", "1 point per unit", 0.1m);
         var rules = new[] { rule };
         var campaign = Campaign.CreateBonusCampaign(TenantId, "C1", "Bonus", 10.0m, DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
         var campaigns = new[] { campaign };

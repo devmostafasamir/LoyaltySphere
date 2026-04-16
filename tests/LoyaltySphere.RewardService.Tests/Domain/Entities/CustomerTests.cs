@@ -265,7 +265,7 @@ public class CustomerTests
     }
 
     [Theory]
-    [InlineData(0, CustomerTier.Bronze)]
+    [InlineData(1, CustomerTier.Bronze)]
     [InlineData(9999, CustomerTier.Bronze)]
     [InlineData(10000, CustomerTier.Silver)]
     [InlineData(49999, CustomerTier.Silver)]

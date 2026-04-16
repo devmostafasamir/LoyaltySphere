@@ -41,6 +41,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
 
         _tenantContextMock = new Mock<ITenantContext>();
         _tenantContextMock.Setup(t => t.TenantId).Returns(TenantId);
+        _tenantContextMock.Setup(t => t.HasTenant).Returns(true);
         
         _loggerFactoryMock = new Mock<ILoggerFactory>();
         

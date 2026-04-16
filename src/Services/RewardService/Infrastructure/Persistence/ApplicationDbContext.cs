@@ -100,13 +100,16 @@ public class ApplicationDbContext : DbContext
             throw new InvalidOperationException("Tenant context has not been set");
         }
 
-        // Set PostgreSQL session variable that RLS policies will use
-        var sql = $"SET app.current_tenant = '{_tenantContext.TenantId}';";
-        
-        var logger = _loggerFactory.CreateLogger<ApplicationDbContext>();
-        logger.LogDebug("Setting PostgreSQL tenant context: {TenantId}", _tenantContext.TenantId);
-        
-        await Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        if (Database.IsRelational())
+        {
+            // Set PostgreSQL session variable that RLS policies will use
+            var sql = $"SET app.current_tenant = '{_tenantContext.TenantId}';";
+            
+            var logger = _loggerFactory.CreateLogger<ApplicationDbContext>();
+            logger.LogDebug("Setting PostgreSQL tenant context: {TenantId}", _tenantContext.TenantId);
+            
+            await Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -119,7 +122,8 @@ public class ApplicationDbContext : DbContext
         {
             if (entry.State == EntityState.Added)
             {
-                if (entry.Property("TenantId").CurrentValue == null)
+                var tenantIdProperty = entry.Metadata.FindProperty("TenantId");
+                if (tenantIdProperty != null && entry.Property("TenantId").CurrentValue == null)
                 {
                     entry.Property("TenantId").CurrentValue = _tenantContext.TenantId;
                 }
