@@ -79,7 +79,7 @@ public sealed class Money : ValueObject
         yield return Currency;
     }
 
-    public override string ToString() => $"{Amount:N2} {Currency}";
+    public override string ToString() => $"{Amount:F2} {Currency}";
 
     public static implicit operator decimal(Money money) => money.Amount;
 }

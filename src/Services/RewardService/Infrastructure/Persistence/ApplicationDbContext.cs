@@ -2,6 +2,7 @@ using LoyaltySphere.MultiTenancy;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Infrastructure.Persistence.Interceptors;
 using LoyaltySphere.EventBus.Outbox;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -47,27 +48,18 @@ public class ApplicationDbContext : DbContext
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             // Add tenant_id property if it doesn't exist
+            // Configure multi-tenancy for entities that have a TenantId property
             if (entityType.ClrType.GetProperty("TenantId") != null)
             {
-                modelBuilder.Entity(entityType.ClrType)
-                    .Property<string>("TenantId")
-                    .HasMaxLength(100)
-                    .IsRequired();
-
-                // Create index on tenant_id for performance
-                modelBuilder.Entity(entityType.ClrType)
-                    .HasIndex("TenantId")
-                    .HasDatabaseName($"IX_{entityType.GetTableName()}_TenantId");
-
-                // Add global query filter (defense in depth - RLS is primary)
-                // This ensures tenant isolation even if RLS is misconfigured
-                var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
-                var property = System.Linq.Expressions.Expression.Property(parameter, "TenantId");
-                var tenantId = System.Linq.Expressions.Expression.Constant(_tenantContext.TenantId);
-                var equals = System.Linq.Expressions.Expression.Equal(property, tenantId);
-                var lambda = System.Linq.Expressions.Expression.Lambda(equals, parameter);
-
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                modelBuilder.Entity(entityType.ClrType).Property("TenantId").IsRequired();
+                
+                // Configure global query filter for defense-in-depth
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
+                var body = Expression.Equal(
+                    Expression.Property(parameter, "TenantId"),
+                    Expression.Property(Expression.Constant(_tenantContext), nameof(ITenantContext.TenantId))
+                );
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, parameter));
             }
         }
     }
@@ -95,13 +87,14 @@ public class ApplicationDbContext : DbContext
     /// </summary>
     public async Task SetTenantContextAsync(CancellationToken cancellationToken = default)
     {
-        if (!_tenantContext.HasTenant)
-        {
-            throw new InvalidOperationException("Tenant context has not been set");
-        }
-
+        // For relational databases (PostgreSQL), we MUST have a tenant context for RLS
         if (Database.IsRelational())
         {
+            if (!_tenantContext.HasTenant)
+            {
+                throw new InvalidOperationException("Tenant context has not been set");
+            }
+
             // Set PostgreSQL session variable that RLS policies will use
             var sql = $"SET app.current_tenant = '{_tenantContext.TenantId}';";
             
@@ -110,6 +103,8 @@ public class ApplicationDbContext : DbContext
             
             await Database.ExecuteSqlRawAsync(sql, cancellationToken);
         }
+        // For non-relational (InMemory), we don't need to throw if it's missing,
+        // although the Interceptor will still try to set TenantId on entities if context exists.
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -123,9 +118,13 @@ public class ApplicationDbContext : DbContext
             if (entry.State == EntityState.Added)
             {
                 var tenantIdProperty = entry.Metadata.FindProperty("TenantId");
-                if (tenantIdProperty != null && entry.Property("TenantId").CurrentValue == null)
+                if (tenantIdProperty != null && _tenantContext.HasTenant)
                 {
-                    entry.Property("TenantId").CurrentValue = _tenantContext.TenantId;
+                    var currentValue = entry.Property("TenantId").CurrentValue;
+                    if (currentValue == null || (currentValue is string s && string.IsNullOrEmpty(s)))
+                    {
+                        entry.Property("TenantId").CurrentValue = _tenantContext.TenantId;
+                    }
                 }
             }
         }

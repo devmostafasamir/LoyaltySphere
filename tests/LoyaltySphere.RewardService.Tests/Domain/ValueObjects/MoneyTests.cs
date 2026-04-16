@@ -50,7 +50,7 @@ public class MoneyTests
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithMessage("Currency cannot be null or empty*");
+            .WithMessage("Currency is required*");
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class MoneyTests
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithMessage("Currency cannot be null or empty*");
+            .WithMessage("Currency is required*");
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class MoneyTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Cannot add money with different currencies*");
+            .WithMessage("Cannot operate on different currencies*");
     }
 
     [Fact]

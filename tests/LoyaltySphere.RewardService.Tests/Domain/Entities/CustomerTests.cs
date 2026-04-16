@@ -128,7 +128,7 @@ public class CustomerTests
         
         var enrolledEvent = (CustomerEnrolledEvent)domainEvents.First();
         enrolledEvent.TenantId.Should().Be(TenantId);
-        enrolledEvent.CustomerId.Should().Be("cust-001");
+        enrolledEvent.CustomerExternalId.Should().Be("cust-001");
         enrolledEvent.Email.Should().Be("ahmed@example.com");
     }
 

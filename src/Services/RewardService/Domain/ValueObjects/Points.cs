@@ -57,7 +57,7 @@ public sealed class Points : ValueObject
         yield return Value;
     }
 
-    public override string ToString() => $"{Value:N2} points";
+    public override string ToString() => $"{Value:0} points";
 
     public static implicit operator decimal(Points points) => points.Value;
     public static explicit operator Points(decimal value) => Create(value);
