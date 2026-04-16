@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 // ============================================
@@ -118,7 +118,7 @@ export interface DailyTransaction {
 })
 export class AdminService {
   private http = inject(HttpClient);
-  private baseUrl = `${environment.apiUrl}/admin`;
+  private baseUrl = `${environment.apiUrl}/api/v1/admin`;
 
   // Reactive state with signals
   campaigns = signal<Campaign[]>([]);
@@ -140,10 +140,8 @@ export class AdminService {
       : {};
 
     return this.http.get<Campaign[]>(`${this.baseUrl}/campaigns`, options).pipe(
-      tap(campaigns => {
-        this.campaigns.set(campaigns);
-        this.loading.set(false);
-      })
+      tap(campaigns => this.campaigns.set(campaigns)),
+      finalize(() => this.loading.set(false))
     );
   }
 
@@ -160,10 +158,8 @@ export class AdminService {
   createCampaign(request: CreateCampaignRequest): Observable<Campaign> {
     this.loading.set(true);
     return this.http.post<Campaign>(`${this.baseUrl}/campaigns`, request).pipe(
-      tap(campaign => {
-        this.campaigns.update(campaigns => [...campaigns, campaign]);
-        this.loading.set(false);
-      })
+      tap(campaign => this.campaigns.update(campaigns => [...campaigns, campaign])),
+      finalize(() => this.loading.set(false))
     );
   }
 
@@ -207,10 +203,8 @@ export class AdminService {
       : {};
 
     return this.http.get<RewardRule[]>(`${this.baseUrl}/reward-rules`, options).pipe(
-      tap(rules => {
-        this.rewardRules.set(rules);
-        this.loading.set(false);
-      })
+      tap(rules => this.rewardRules.set(rules)),
+      finalize(() => this.loading.set(false))
     );
   }
 
@@ -220,10 +214,8 @@ export class AdminService {
   createRewardRule(request: CreateRewardRuleRequest): Observable<RewardRule> {
     this.loading.set(true);
     return this.http.post<RewardRule>(`${this.baseUrl}/reward-rules`, request).pipe(
-      tap(rule => {
-        this.rewardRules.update(rules => [...rules, rule]);
-        this.loading.set(false);
-      })
+      tap(rule => this.rewardRules.update(rules => [...rules, rule])),
+      finalize(() => this.loading.set(false))
     );
   }
 

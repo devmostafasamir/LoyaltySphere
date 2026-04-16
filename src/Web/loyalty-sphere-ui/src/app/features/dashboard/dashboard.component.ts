@@ -14,31 +14,31 @@ import { ToastService } from '../../core/services/toast.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen bg-slate-950 text-white">
+    <div class="min-h-screen bg-slate-950 text-white pb-12">
       <!-- Header -->
-      <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm">
-        <div class="container mx-auto px-4 py-6">
-          <div class="flex items-center justify-between">
+      <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 md:py-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 class="text-3xl font-bold text-crimson-500">LoyaltySphere</h1>
-              <p class="text-slate-400 text-sm mt-1">Your Rewards Dashboard</p>
+              <h1 class="text-2xl md:text-3xl font-bold text-gradient-cinematic">LoyaltySphere</h1>
+              <p class="text-slate-400 text-xs md:text-sm mt-1">Your Rewards Dashboard</p>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center justify-between sm:justify-end gap-4">
               <!-- Connection Status -->
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700">
                 <div 
                   class="w-2 h-2 rounded-full"
                   [class.bg-emerald-500]="signalRService.isConnected()"
                   [class.bg-red-500]="!signalRService.isConnected()"
                   [class.animate-pulse]="!signalRService.isConnected()">
                 </div>
-                <span class="text-sm text-slate-400">
-                  {{ signalRService.isConnected() ? 'Connected' : 'Disconnected' }}
+                <span class="text-xs font-medium text-slate-300">
+                  {{ signalRService.isConnected() ? 'Live' : 'Offline' }}
                 </span>
               </div>
               
               <!-- Tier Badge -->
-              <div class="px-4 py-2 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-semibold text-sm">
+              <div class="px-4 py-1.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold text-xs md:text-sm shadow-glow">
                 {{ rewardService.currentTier() }}
               </div>
             </div>
@@ -47,41 +47,41 @@ import { ToastService } from '../../core/services/toast.service';
       </header>
 
       <!-- Main Content -->
-      <main class="container mx-auto px-4 py-8">
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8">
         <!-- Points Balance Card -->
-        <div class="glass-card p-8 mb-8 relative overflow-hidden">
-          <!-- Background Glow -->
-          <div class="absolute inset-0 bg-gradient-to-br from-crimson-500/10 to-transparent pointer-events-none"></div>
+        <div class="loyalty-card mb-8 relative overflow-hidden group">
+          <!-- Background Glow Effect -->
+          <div class="absolute inset-0 bg-gradient-to-br from-crimson-500/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
           
           <div class="relative z-10">
-            <p class="text-slate-400 text-sm uppercase tracking-wider mb-2">Your Points Balance</p>
-            <div class="flex items-baseline gap-4">
+            <p class="text-slate-400 text-xs md:text-sm uppercase tracking-widest mb-2 font-medium">Available Balance</p>
+            <div class="flex items-baseline gap-2 md:gap-4 overflow-hidden">
               <h2 
-                class="text-6xl font-bold text-crimson-500 transition-all duration-500"
-                [class.animate-scaleIn]="balanceAnimating()">
+                class="text-5xl sm:text-7xl md:text-8xl font-black text-crimson-500 transition-all duration-500 tracking-tighter"
+                [class.animate-count-up]="balanceAnimating()">
                 {{ rewardService.currentBalance().toLocaleString() }}
               </h2>
-              <span class="text-2xl text-slate-400">pts</span>
+              <span class="text-xl md:text-2xl text-slate-500 font-bold">PTS</span>
             </div>
             
-            <!-- Lifetime Points -->
-            <div class="mt-4 flex items-center gap-6">
+            <!-- Metrics Bar -->
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
               <div>
-                <p class="text-slate-500 text-xs uppercase">Lifetime Points</p>
-                <p class="text-slate-300 text-lg font-semibold">
-                  {{ rewardService.lifetimePoints().toLocaleString() }}
+                <p class="text-slate-500 text-[10px] md:text-xs uppercase tracking-wider mb-1">Lifetime Earnings</p>
+                <p class="text-slate-200 text-lg md:text-xl font-bold">
+                  {{ rewardService.lifetimePoints().toLocaleString() }} <span class="text-xs text-slate-500 font-normal">total</span>
                 </p>
               </div>
               
               <!-- Progress to Next Tier -->
-              <div class="flex-1">
-                <div class="flex items-center justify-between mb-1">
-                  <p class="text-slate-500 text-xs uppercase">Progress to Next Tier</p>
-                  <p class="text-slate-400 text-xs">{{ rewardService.progressToNextTier() }}%</p>
+              <div class="w-full">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-slate-500 text-[10px] md:text-xs uppercase tracking-wider">Tier Progress</p>
+                  <p class="text-crimson-400 text-xs font-bold">{{ rewardService.progressToNextTier() }}%</p>
                 </div>
-                <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-2.5 bg-slate-800/50 rounded-full overflow-hidden border border-slate-700/50">
                   <div 
-                    class="h-full bg-gradient-to-r from-crimson-500 to-gold-500 transition-all duration-1000 ease-out"
+                    class="h-full bg-gradient-to-r from-crimson-600 to-gold-500 transition-all duration-1000 ease-out shadow-glow"
                     [style.width.%]="rewardService.progressToNextTier()">
                   </div>
                 </div>
@@ -91,59 +91,65 @@ import { ToastService } from '../../core/services/toast.service';
         </div>
 
         <!-- Recent Transactions -->
-        <div class="glass-card p-6">
-          <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-crimson-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            Recent Activity
-          </h3>
+        <div class="loyalty-card">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg md:text-xl font-bold flex items-center gap-2">
+              <svg class="w-5 h-5 text-crimson-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Recent Activity
+            </h3>
+            <span class="text-xs text-slate-500 bg-slate-800/50 px-2 py-1 rounded">Real-time Feed</span>
+          </div>
           
           @if (recentTransactions().length === 0) {
-            <div class="text-center py-12 text-slate-500">
-              <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-              </svg>
-              <p>No recent transactions</p>
+            <div class="text-center py-16 bg-slate-900/20 rounded-xl border border-dashed border-slate-800">
+              <div class="w-16 h-16 mx-auto mb-4 bg-slate-800/50 rounded-full flex items-center justify-center">
+                <svg class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                </svg>
+              </div>
+              <p class="text-slate-500 font-medium">No activity recorded yet</p>
+              <p class="text-slate-600 text-xs mt-1">Transactions will appear here as they happen</p>
             </div>
           }
           
           @if (recentTransactions().length > 0) {
             <div class="space-y-3">
               @for (transaction of recentTransactions(); track transaction.id) {
-                <div class="flex items-center justify-between p-4 rounded-lg bg-slate-900/50 border border-slate-800 hover:border-crimson-500/50 transition-all duration-300 animate-fadeIn">
+                <div class="flex items-center justify-between p-4 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-crimson-800/50 hover:bg-slate-900/60 transition-all duration-300 group">
                   <div class="flex items-center gap-4">
                     @if (transaction.type === 'Earned') {
-                      <div class="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-500/20">
-                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div class="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 transition-colors group-hover:bg-emerald-500/20">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
                       </div>
                     }
                     @if (transaction.type === 'Redeemed') {
-                      <div class="w-10 h-10 rounded-full flex items-center justify-center bg-crimson-500/20">
-                        <svg class="w-5 h-5 text-crimson-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div class="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center bg-crimson-500/10 border border-crimson-500/20 text-crimson-500 transition-colors group-hover:bg-crimson-500/20">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
                         </svg>
                       </div>
                     }
                     <div>
-                      <p class="font-semibold">{{ transaction.description }}</p>
-                      <p class="text-sm text-slate-400">{{ transaction.timestamp | date:'short' }}</p>
+                      <p class="font-bold text-slate-100 text-sm md:text-base">{{ transaction.description }}</p>
+                      <p class="text-[10px] md:text-xs text-slate-500 font-medium mt-0.5">{{ transaction.timestamp | date:'MMM d, h:mm a' }}</p>
                     </div>
                   </div>
                   <div class="text-right">
                     @if (transaction.type === 'Earned') {
-                      <p class="text-xl font-bold text-emerald-500">
+                      <p class="text-lg md:text-xl font-black text-emerald-500 tracking-tight">
                         +{{ transaction.points.toLocaleString() }}
                       </p>
                     }
                     @if (transaction.type === 'Redeemed') {
-                      <p class="text-xl font-bold text-crimson-500">
+                      <p class="text-lg md:text-xl font-black text-crimson-500 tracking-tight">
                         -{{ transaction.points.toLocaleString() }}
                       </p>
                     }
-                    <p class="text-xs text-slate-500">{{ transaction.type }}</p>
+                    <p class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">{{ transaction.type }}</p>
                   </div>
                 </div>
               }
@@ -155,10 +161,10 @@ import { ToastService } from '../../core/services/toast.service';
       <!-- Reward Animation Overlay -->
       @if (showRewardAnimation()) {
         <div class="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
-          <div class="animate-rewardPop">
+          <div class="animate-reward-pop">
             <div class="text-center">
               <div class="text-8xl mb-4 animate-sparkle">✨</div>
-              <div class="text-6xl font-bold text-gold-500 animate-scaleIn">
+              <div class="text-6xl font-bold text-gold-500 animate-scale-in">
                 +{{ lastPointsAwarded() }}
               </div>
               <p class="text-2xl text-white mt-2">Points Earned!</p>
@@ -169,8 +175,8 @@ import { ToastService } from '../../core/services/toast.service';
 
       <!-- Tier Upgrade Celebration -->
       @if (showTierCelebration()) {
-        <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn">
-          <div class="text-center animate-scaleIn">
+        <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
+          <div class="text-center animate-scale-in">
             <div class="text-9xl mb-6 animate-sparkle">🏆</div>
             <h2 class="text-6xl font-bold text-gold-500 mb-4">Congratulations!</h2>
             <p class="text-3xl text-white mb-2">You've reached</p>
@@ -185,12 +191,7 @@ import { ToastService } from '../../core/services/toast.service';
       }
     </div>
   `,
-  styles: [`
-    .glass-card {
-      @apply bg-slate-900/30 backdrop-blur-sm border border-slate-800 rounded-2xl;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-  `]
+  styles: []
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   // Services

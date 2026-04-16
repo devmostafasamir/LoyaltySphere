@@ -72,61 +72,7 @@ import { ToastService, Toast } from '../../../core/services/toast.service';
       }
     </div>
   `,
-  styles: [`
-    .toast-container {
-      @apply flex items-start gap-3 p-4 rounded-lg shadow-glow backdrop-blur-sm border;
-      @apply transition-all duration-300 hover:scale-105;
-    }
-
-    .toast-success {
-      @apply bg-emerald-500/20 border-emerald-500/50 text-emerald-100;
-    }
-
-    .toast-error {
-      @apply bg-red-500/20 border-red-500/50 text-red-100;
-    }
-
-    .toast-warning {
-      @apply bg-amber-500/20 border-amber-500/50 text-amber-100;
-    }
-
-    .toast-info {
-      @apply bg-blue-500/20 border-blue-500/50 text-blue-100;
-    }
-
-    .toast-reward {
-      @apply bg-gradient-to-r from-crimson-500/30 to-gold-500/30 border-gold-500/50 text-white;
-      box-shadow: 0 0 30px rgba(245, 158, 11, 0.3);
-    }
-
-    .toast-celebration {
-      @apply bg-gradient-to-r from-gold-500/30 to-crimson-500/30 border-gold-500/50 text-white;
-      box-shadow: 0 0 40px rgba(245, 158, 11, 0.4);
-    }
-
-    .toast-icon {
-      @apply flex-shrink-0 w-8 h-8 flex items-center justify-center;
-    }
-
-    .toast-close {
-      @apply flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity;
-    }
-
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    .animate-slideInRight {
-      animation: slideInRight 0.3s ease-out;
-    }
-  `]
+  styles: []
 })
 export class ToastComponent {
   constructor(public toastService: ToastService) {}

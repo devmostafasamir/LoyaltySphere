@@ -29,20 +29,32 @@ public class TenantResolutionMiddleware
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext)
     {
-        // Try to resolve tenant from multiple sources (priority order)
+        // 1. Skip tenant resolution for OPTIONS requests (CORS preflight)
+        if (HttpMethods.IsOptions(context.Request.Method))
+        {
+            await _next(context);
+            return;
+        }
+
+        // 2. Try to resolve tenant from multiple sources (priority order)
         var tenantId = ResolveTenantId(context);
 
         if (string.IsNullOrEmpty(tenantId))
         {
-            _logger.LogWarning("No tenant identifier found in request. Path: {Path}", context.Request.Path);
+            _logger.LogWarning("No tenant identifier found in request. Path: {Path}. Method: {Method}", 
+                context.Request.Path, 
+                context.Request.Method);
             
             // For public endpoints, allow anonymous access
             if (IsPublicEndpoint(context.Request.Path))
             {
+                _logger.LogDebug("Public endpoint detected, skipping tenant resolution: {Path}", context.Request.Path);
                 await _next(context);
                 return;
             }
 
+            _logger.LogWarning("Rejecting request: Tenant identifier is required for protected path {Path}", context.Request.Path);
+            
             // Return 400 Bad Request for protected endpoints without tenant
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             await context.Response.WriteAsJsonAsync(new
@@ -197,16 +209,31 @@ public class TenantResolutionMiddleware
     /// </summary>
     private bool IsPublicEndpoint(PathString path)
     {
-        var publicPaths = new[]
+        // Normalize path for matching
+        var pathValue = path.Value ?? string.Empty;
+
+        // Static list of prefixes
+        var publicPrefixes = new[]
         {
-            "/health",
-            "/metrics",
-            "/swagger",
+            "/swagger",         // Swagger docs
+            "/health",          // Health checks
+            "/metrics",         // Prometheus metrics
+            "/hubs",            // SignalR hubs
+            "/favicon.ico",     // Browser icon
             "/api/auth/login",
-            "/api/auth/register"
+            "/api/auth/register",
+            "/index.html"
         };
 
-        return publicPaths.Any(p => path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase));
+        // Root variations
+        if (pathValue == "/" || string.IsNullOrWhiteSpace(pathValue))
+        {
+            return true;
+        }
+
+        // Prefix match or exact match from list
+        return publicPrefixes.Any(p => 
+            pathValue.StartsWith(p, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

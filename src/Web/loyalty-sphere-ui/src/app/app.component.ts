@@ -10,7 +10,8 @@ import { NavigationComponent } from './shared/navigation.component';
   template: `
     <div class="flex min-h-screen bg-slate-950">
       <app-navigation />
-      <main class="flex-1 ml-64">
+      <!-- Content Area: Responsive margins to account for Sidebar (desktop) and Header (mobile) -->
+      <main class="flex-1 md:ml-64 pt-16 md:pt-0 min-w-0">
         <router-outlet />
       </main>
     </div>

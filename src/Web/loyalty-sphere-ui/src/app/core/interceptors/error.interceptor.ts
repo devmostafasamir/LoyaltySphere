@@ -22,14 +22,17 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       } else {
         // Server-side error
         switch (error.status) {
+          case 0:
+            errorMessage = 'Cannot connect to server. Please ensure the backend is running on HTTPS port 5001 and CORS is allowed.';
+            break;
           case 400:
-            errorMessage = error.error?.detail || 'Invalid request';
+            errorMessage = error.error?.message || error.error?.detail || 'Invalid request';
             break;
           case 401:
             errorMessage = 'Unauthorized. Please log in.';
             break;
           case 403:
-            errorMessage = 'Access denied';
+            errorMessage = 'Access denied. Please check your Tenant ID configuration.';
             break;
           case 404:
             errorMessage = error.error?.detail || 'Resource not found';
@@ -38,7 +41,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             errorMessage = 'Server error. Please try again later.';
             break;
           default:
-            errorMessage = error.error?.detail || `Error: ${error.status}`;
+            errorMessage = error.error?.message || error.error?.detail || `Error: ${error.status}`;
         }
       }
 

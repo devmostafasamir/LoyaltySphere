@@ -19,9 +19,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./deployment/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./deployment/scripts/setup-rls.sql:/docker-entrypoint-initdb.d/02-setup-rls.sql
-      - ./deployment/scripts/seed-data.sql:/docker-entrypoint-initdb.d/03-seed-data.sql
+      - ./deployment/scripts/setup-rls.sql:/docker-entrypoint-initdb.d/01-setup-rls.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -40,8 +38,7 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI
+      - "15673:15672" # Management UI
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -83,72 +80,29 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:80
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=loyalty_sphere;Username=postgres;Password=postgres"
+      ConnectionStrings__Redis: "redis:6379,abortConnect=false"
       RabbitMQ__Host: rabbitmq
       RabbitMQ__Username: guest
       RabbitMQ__Password: guest
-      Redis__ConnectionString: "redis:6379"
       OpenTelemetry__ServiceName: reward-service
       OpenTelemetry__Endpoint: http://jaeger:4317
+      Cors__AllowedOrigins__0: "http://localhost:4200"
+      Cors__AllowedOrigins__1: "https://localhost:4200"
+      Auth__Authority: ""
+      Auth__DisableJwtValidation: "true"
     ports:
       - "5001:80"
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - loyalty-network
-    restart: unless-stopped
-
-  # ============================================
-  # Transaction Service (Microservice)
-  # ============================================
-  transaction-service:
-    build:
-      context: .
-      dockerfile: src/Services/TransactionService/Dockerfile
-    container_name: loyalty-transaction-service
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:80
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=loyalty_sphere;Username=postgres;Password=postgres"
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: guest
-      RabbitMQ__Password: guest
-      OpenTelemetry__ServiceName: transaction-service
-      OpenTelemetry__Endpoint: http://jaeger:4317
-    ports:
-      - "5002:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
       - loyalty-network
     restart: unless-stopped
 
-  # ============================================
-  # API Gateway (Ocelot)
-  # ============================================
-  api-gateway:
-    build:
-      context: .
-      dockerfile: src/Services/ApiGateway/Dockerfile
-    container_name: loyalty-api-gateway
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:80
-    ports:
-      - "5000:80"
-    depends_on:
-      - reward-service
-      - transaction-service
-    networks:
-      - loyalty-network
-    restart: unless-stopped
 
   # ============================================
   # Angular Frontend
@@ -160,11 +114,11 @@ services:
     container_name: loyalty-frontend
     environment:
       NODE_ENV: production
-      API_URL: http://api-gateway:80
+      API_URL: http://reward-service:80
     ports:
       - "4200:80"
     depends_on:
-      - api-gateway
+      - reward-service
     networks:
       - loyalty-network
     restart: unless-stopped
@@ -265,9 +219,8 @@ volumes:
 #
 # Access services:
 #   - Frontend: http://localhost:4200
-#   - API Gateway: http://localhost:5000
 #   - Reward Service: http://localhost:5001
-#   - Transaction Service: http://localhost:5002
+#   - Swagger API: http://localhost:5001/swagger
 #   - RabbitMQ Management: http://localhost:15672 (guest/guest)
 #   - Jaeger UI: http://localhost:16686
 #   - Prometheus: http://localhost:9090

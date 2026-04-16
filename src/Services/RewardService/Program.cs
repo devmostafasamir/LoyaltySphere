@@ -6,7 +6,10 @@ using LoyaltySphere.RewardService.Infrastructure.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using Serilog;
+using LoyaltySphere.RewardService.Infrastructure.Persistence.Seeds;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +32,6 @@ builder.Host.UseSerilog();
 
 // Multi-Tenancy (Dependency Inversion Principle)
 builder.Services.AddMultiTenancy();
-builder.Services.AddScoped<TenantResolutionMiddleware>();
 
 // Persistence Layer (Repository Pattern + Unit of Work)
 builder.Services.AddPersistence(builder.Configuration);
@@ -47,32 +49,86 @@ builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddRealTimeServices();
 
 // Authentication & Authorization
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Auth:Authority"];
-        options.Audience = builder.Configuration["Auth:Audience"];
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+// In Development: JWT validation is bypassed so the app runs without an OIDC provider.
+// In Production: Set Auth:Authority and Auth:Audience to your identity provider.
+var isDevBypass = builder.Environment.IsDevelopment() &&
+                  string.IsNullOrWhiteSpace(builder.Configuration["Auth:Authority"]);
 
-        // Allow SignalR to use JWT from query string
-        options.Events = new JwtBearerEvents
+if (isDevBypass)
+{
+    // Dev bypass: accept any bearer token (or no token) — NEVER use in production
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
         {
-            OnMessageReceived = context =>
+            options.RequireHttpsMetadata = false;
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
             {
-                var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = false,
+                ValidateIssuerSigningKey = false,
+                // Allow anonymous tokens through — DEVELOPMENT ONLY
+                SignatureValidator = (token, _) =>
+                    new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(
+                        "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJkZXYtdXNlciIsIm5hbWUiOiJEZXZlbG9wZXIiLCJyb2xlIjoiQWRtaW4iLCJ0ZW5hbnRfaWQiOiJuYXRpb25hbC1iYW5rIiwiaWF0IjoxNjE2MjM5MDIyfQ.")
+            };
 
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            // Allow SignalR to use JWT from query string
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
                 {
-                    context.Token = accessToken;
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        context.Token = accessToken;
+                    return Task.CompletedTask;
+                },
+                OnAuthenticationFailed = context =>
+                {
+                    // In dev bypass, swallow auth failures silently
+                    context.NoResult();
+                    return Task.CompletedTask;
                 }
+            };
+        });
+    Log.Warning("⚠️  JWT validation DISABLED — Development bypass mode active. Set Auth:Authority for production.");
+}
+else
+{
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = builder.Configuration["Auth:Authority"];
+            options.Audience = builder.Configuration["Auth:Audience"];
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
 
-                return Task.CompletedTask;
-            }
-        };
-    });
+            // Allow SignalR to use JWT from query string
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        context.Token = accessToken;
+                    return Task.CompletedTask;
+                }
+            };
+        });
+}
 
-builder.Services.AddAuthorization();
+// Authorization — in dev bypass, all [Authorize] decorators pass without a real user
+builder.Services.AddAuthorization(options =>
+{
+    if (isDevBypass)
+    {
+        options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+            .RequireAssertion(_ => true)
+            .Build();
+        options.FallbackPolicy = null;
+    }
+});
 
 // API Versioning (Single Responsibility)
 builder.Services.AddApiVersioningConfiguration();
@@ -128,7 +184,11 @@ builder.Services.AddSwaggerGen(c =>
     {
         c.IncludeXmlComments(xmlPath);
     }
+
+    // Add X-Tenant-Id header to Swagger
+    c.OperationFilter<TenantHeaderFilter>();
 });
+
 
 // CORS
 builder.Services.AddCors(options =>
@@ -160,16 +220,13 @@ app.UseExceptionHandling();
 // Serilog Request Logging
 app.UseSerilogRequestLogging();
 
-// Swagger (Development only)
-if (app.Environment.IsDevelopment())
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Reward Service API v1");
-        c.RoutePrefix = string.Empty; // Serve Swagger at root
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Reward Service API v1");
+    c.RoutePrefix = string.Empty; // Serve Swagger at root
+});
 
 // CORS
 app.UseCors("AllowFrontend");
@@ -205,10 +262,17 @@ if (app.Environment.IsDevelopment())
     {
         await dbContext.Database.MigrateAsync();
         Log.Information("Database migration completed successfully");
+
+        // Execute SOLID decoupled data seeds
+        var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContextSeed>>();
+        await ApplicationDbContextSeed.SeedAsync(dbContext, seedLogger, "national-bank");
+        await ApplicationDbContextSeed.SeedAsync(dbContext, seedLogger, "suez-bank");
+        
+        Log.Information("Database seeding completed successfully");
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "An error occurred while migrating the database");
+        Log.Error(ex, "An error occurred while migrating or seeding the database");
     }
 }
 
@@ -227,4 +291,32 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+// ============================================
+// Supporting Types — must be AFTER all top-level code
+// ============================================
+
+/// <summary>
+/// Swagger operation filter that adds the X-Tenant-Id header to every API endpoint.
+/// </summary>
+public class TenantHeaderFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        operation.Parameters ??= new List<OpenApiParameter>();
+
+        operation.Parameters.Add(new OpenApiParameter
+        {
+            Name = "X-Tenant-Id",
+            In = ParameterLocation.Header,
+            Description = "Tenant identifier (e.g., national-bank, suez-bank)",
+            Required = true,
+            Schema = new OpenApiSchema
+            {
+                Type = "string",
+                Default = new OpenApiString("national-bank")
+            }
+        });
+    }
 }
