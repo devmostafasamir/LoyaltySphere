@@ -2,6 +2,7 @@ using FluentAssertions;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
 using LoyaltySphere.RewardService.Domain.Events;
+using LoyaltySphere.RewardService.Domain.Enums;
 using Xunit;
 
 namespace LoyaltySphere.RewardService.Tests.Domain.Entities;
@@ -38,7 +39,7 @@ public class CustomerTests
         customer.PointsBalance.Value.Should().Be(0);
         customer.LifetimePoints.Value.Should().Be(0);
         customer.IsActive.Should().BeTrue();
-        customer.Tier.Should().Be("Bronze");
+        customer.Tier.Should().Be(CustomerTier.Bronze);
     }
 
     [Fact]
@@ -121,7 +122,7 @@ public class CustomerTests
         );
 
         // Assert
-        var domainEvents = customer.GetDomainEvents();
+        var domainEvents = customer.DomainEvents;
         domainEvents.Should().ContainSingle();
         domainEvents.First().Should().BeOfType<CustomerEnrolledEvent>();
         
@@ -173,7 +174,7 @@ public class CustomerTests
         customer.AwardPoints(Points.Create(100), "Purchase reward", "txn-123");
 
         // Assert
-        var domainEvents = customer.GetDomainEvents();
+        var domainEvents = customer.DomainEvents;
         domainEvents.Should().ContainSingle();
         domainEvents.First().Should().BeOfType<PointsAwardedEvent>();
         
@@ -254,7 +255,7 @@ public class CustomerTests
         customer.RedeemPoints(Points.Create(50), "Cashback");
 
         // Assert
-        var domainEvents = customer.GetDomainEvents();
+        var domainEvents = customer.DomainEvents;
         domainEvents.Should().ContainSingle();
         domainEvents.First().Should().BeOfType<PointsRedeemedEvent>();
         
@@ -264,14 +265,14 @@ public class CustomerTests
     }
 
     [Theory]
-    [InlineData(0, "Bronze")]
-    [InlineData(9999, "Bronze")]
-    [InlineData(10000, "Silver")]
-    [InlineData(49999, "Silver")]
-    [InlineData(50000, "Gold")]
-    [InlineData(99999, "Gold")]
-    [InlineData(100000, "Platinum")]
-    public void AwardPoints_ShouldUpdateTierBasedOnLifetimePoints(decimal pointsToAward, string expectedTier)
+    [InlineData(0, CustomerTier.Bronze)]
+    [InlineData(9999, CustomerTier.Bronze)]
+    [InlineData(10000, CustomerTier.Silver)]
+    [InlineData(49999, CustomerTier.Silver)]
+    [InlineData(50000, CustomerTier.Gold)]
+    [InlineData(99999, CustomerTier.Gold)]
+    [InlineData(100000, CustomerTier.Platinum)]
+    public void AwardPoints_ShouldUpdateTierBasedOnLifetimePoints(decimal pointsToAward, CustomerTier expectedTier)
     {
         // Arrange
         var customer = Customer.Create(TenantId, "cust-001", "Ahmed", "Hassan", "ahmed@example.com");
@@ -294,12 +295,12 @@ public class CustomerTests
         customer.AwardPoints(Points.Create(10000), "Big purchase");
 
         // Assert
-        var domainEvents = customer.GetDomainEvents();
+        var domainEvents = customer.DomainEvents;
         domainEvents.Should().Contain(e => e is CustomerTierUpgradedEvent);
         
         var tierEvent = domainEvents.OfType<CustomerTierUpgradedEvent>().First();
-        tierEvent.OldTier.Should().Be("Bronze");
-        tierEvent.NewTier.Should().Be("Silver");
+        tierEvent.OldTier.Should().Be(CustomerTier.Bronze.ToString());
+        tierEvent.NewTier.Should().Be(CustomerTier.Silver.ToString());
     }
 
     [Fact]
@@ -326,7 +327,7 @@ public class CustomerTests
         customer.Deactivate();
 
         // Assert
-        var domainEvents = customer.GetDomainEvents();
+        var domainEvents = customer.DomainEvents;
         domainEvents.Should().ContainSingle();
         domainEvents.First().Should().BeOfType<CustomerDeactivatedEvent>();
     }
@@ -372,7 +373,7 @@ public class CustomerTests
         customer.Reactivate();
 
         // Assert
-        var domainEvents = customer.GetDomainEvents();
+        var domainEvents = customer.DomainEvents;
         domainEvents.Should().ContainSingle();
         domainEvents.First().Should().BeOfType<CustomerReactivatedEvent>();
     }

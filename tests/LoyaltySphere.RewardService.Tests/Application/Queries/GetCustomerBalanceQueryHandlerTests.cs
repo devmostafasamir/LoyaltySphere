@@ -1,10 +1,18 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
 using FluentAssertions;
-using LoyaltySphere.RewardService.Application.Queries.GetCustomerBalance;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using LoyaltySphere.MultiTenancy;
+using LoyaltySphere.RewardService.Infrastructure.Persistence;
+using LoyaltySphere.RewardService.Infrastructure.Repositories;
+using LoyaltySphere.RewardService.Domain.Repositories;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
-using LoyaltySphere.RewardService.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
+using LoyaltySphere.RewardService.Application.Queries.GetCustomerBalance;
 
 namespace LoyaltySphere.RewardService.Tests.Application.Queries;
 
@@ -15,6 +23,9 @@ namespace LoyaltySphere.RewardService.Tests.Application.Queries;
 public class GetCustomerBalanceQueryHandlerTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly Mock<ITenantContext> _tenantContextMock;
+    private readonly Mock<ILoggerFactory> _loggerFactoryMock;
     private const string TenantId = "test-tenant";
 
     public GetCustomerBalanceQueryHandlerTests()
@@ -23,7 +34,13 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _context = new ApplicationDbContext(options);
+        _tenantContextMock = new Mock<ITenantContext>();
+        _tenantContextMock.Setup(t => t.TenantId).Returns(TenantId);
+        
+        _loggerFactoryMock = new Mock<ILoggerFactory>();
+
+        _context = new ApplicationDbContext(options, _tenantContextMock.Object, _loggerFactoryMock.Object);
+        _unitOfWork = new UnitOfWork(_context);
     }
 
     [Fact]
@@ -35,8 +52,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -54,14 +71,12 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
     public async Task Handle_WithNonExistentCustomer_ShouldReturnNull()
     {
         // Arrange
-        var query = new GetCustomerBalanceQuery { CustomerId = "non-existent" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "non-existent" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
-        // Act
-        var result = await handler.Handle(query, CancellationToken.None);
-
-        // Assert
-        result.Should().BeNull();
+        // Act & Assert
+        await handler.Invoking(h => h.Handle(query, CancellationToken.None))
+            .Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
@@ -72,8 +87,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -94,8 +109,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -115,8 +130,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -135,8 +150,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -156,8 +171,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -176,8 +191,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -195,8 +210,8 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        var query = new GetCustomerBalanceQuery { CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_context);
+        var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);

@@ -1,9 +1,9 @@
-using FluentAssertions;
-using LoyaltySphere.RewardService.Domain.Entities;
-using LoyaltySphere.RewardService.Domain.ValueObjects;
-using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
+using LoyaltySphere.MultiTenancy;
+using LoyaltySphere.RewardService.Infrastructure.Persistence;
 
 namespace LoyaltySphere.RewardService.Tests.Integration;
 
@@ -15,6 +15,8 @@ namespace LoyaltySphere.RewardService.Tests.Integration;
 public class TenantIsolationTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
+    private readonly Mock<ITenantContext> _tenantContextMock;
+    private readonly Mock<ILoggerFactory> _loggerFactoryMock;
     private const string TenantA = "tenant-a";
     private const string TenantB = "tenant-b";
 
@@ -24,7 +26,10 @@ public class TenantIsolationTests : IDisposable
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _context = new ApplicationDbContext(options);
+        _tenantContextMock = new Mock<ITenantContext>();
+        _loggerFactoryMock = new Mock<ILoggerFactory>();
+
+        _context = new ApplicationDbContext(options, _tenantContextMock.Object, _loggerFactoryMock.Object);
     }
 
     [Fact]
@@ -69,13 +74,16 @@ public class TenantIsolationTests : IDisposable
         var transactionAmount = Money.Create(1000, "EGP");
         var pointsAwarded = Points.Create(100);
 
-        var reward = Reward.Create(
+        var reward = Reward.CreateEarned(
             TenantA,
             customerA.Id,
             "cust-a",
-            transactionAmount,
             pointsAwarded,
-            "Purchase reward"
+            transactionAmount,
+            "Internal",
+            "Purchase reward",
+            "txn-123",
+            "merch-1"
         );
 
         // Act
@@ -90,7 +98,7 @@ public class TenantIsolationTests : IDisposable
 
         // Assert - Verify reward is NOT visible to Tenant B
         var rewardForTenantB = await _context.Rewards
-            .FirstOrDefaultAsync(r => r.CustomerId == "cust-a" && r.TenantId == TenantB);
+            .FirstOrDefaultAsync(r => r.CustomerExternalId == "cust-a" && r.TenantId == TenantB);
         
         rewardForTenantB.Should().BeNull();
     }
@@ -140,6 +148,7 @@ public class TenantIsolationTests : IDisposable
         updatedCustomerA.PointsBalance.Value.Should().Be(100);
 
         // Assert - Verify Tenant B customer still has zero points
+        // Assert - Verify Tenant A customer still has zero points
         var updatedCustomerB = await _context.Customers
             .FirstAsync(c => c.CustomerId == "cust-shared-id" && c.TenantId == TenantB);
         
@@ -156,9 +165,9 @@ public class TenantIsolationTests : IDisposable
         _context.Customers.AddRange(customerA, customerB);
         await _context.SaveChangesAsync();
 
-        var rewardA1 = Reward.Create(TenantA, customerA.Id, "cust-a", Money.Create(1000, "EGP"), Points.Create(100), "Reward 1");
-        var rewardA2 = Reward.Create(TenantA, customerA.Id, "cust-a", Money.Create(2000, "EGP"), Points.Create(200), "Reward 2");
-        var rewardB1 = Reward.Create(TenantB, customerB.Id, "cust-b", Money.Create(1500, "EGP"), Points.Create(150), "Reward 3");
+        var rewardA1 = Reward.CreateEarned(TenantA, customerA.Id, "cust-a", Points.Create(100), Money.Create(1000, "EGP"), "Internal", "Reward 1", "txn-a1", "merch-1");
+        var rewardA2 = Reward.CreateEarned(TenantA, customerA.Id, "cust-a", Points.Create(200), Money.Create(2000, "EGP"), "Internal", "Reward 2", "txn-a2", "merch-1");
+        var rewardB1 = Reward.CreateEarned(TenantB, customerB.Id, "cust-b", Points.Create(150), Money.Create(1500, "EGP"), "Internal", "Reward 3", "txn-b1", "merch-1");
 
         _context.Rewards.AddRange(rewardA1, rewardA2, rewardB1);
         await _context.SaveChangesAsync();
