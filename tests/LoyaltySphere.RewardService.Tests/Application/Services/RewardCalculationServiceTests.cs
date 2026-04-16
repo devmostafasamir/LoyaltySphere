@@ -85,7 +85,7 @@ public class RewardCalculationServiceTests
         var amount = Money.Create(1000, "EGP");
         var rule = RewardRule.Create(TenantId, "Standard Rule", "1 point per unit", 1.0m);
         var rules = new[] { rule };
-        var campaign = Campaign.Create(TenantId, "C1", "Bonus", DateTime.UtcNow.AddDays(1));
+        var campaign = Campaign.CreateBonusCampaign(TenantId, "C1", "Bonus", 10.0m, DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
         var campaigns = new[] { campaign };
 
         _tierServiceMock.Setup(s => s.GetTierMultiplier(customer.Tier))
