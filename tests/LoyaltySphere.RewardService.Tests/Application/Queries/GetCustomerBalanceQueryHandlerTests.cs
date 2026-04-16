@@ -221,7 +221,6 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         result.FirstName.Should().Be("Ahmed");
         result.LastName.Should().Be("Hassan");
         result.Email.Should().Be("ahmed@example.com");
-        result.PhoneNumber.Should().Be("+20123456789");
     }
 
     public void Dispose()

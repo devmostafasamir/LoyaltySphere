@@ -299,7 +299,7 @@ public class CustomerTests
         domainEvents.Should().Contain(e => e is CustomerTierUpgradedEvent);
         
         var tierEvent = domainEvents.OfType<CustomerTierUpgradedEvent>().First();
-        tierEvent.OldTier.Should().Be(CustomerTier.Bronze.ToString());
+        tierEvent.PreviousTier.Should().Be(CustomerTier.Bronze.ToString());
         tierEvent.NewTier.Should().Be(CustomerTier.Silver.ToString());
     }
 

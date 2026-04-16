@@ -2,8 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using FluentAssertions;
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using LoyaltySphere.MultiTenancy;
 using LoyaltySphere.RewardService.Infrastructure.Persistence;
+using LoyaltySphere.RewardService.Domain.Entities;
+using LoyaltySphere.RewardService.Domain.ValueObjects;
 
 namespace LoyaltySphere.RewardService.Tests.Integration;
 
@@ -36,7 +43,6 @@ public class TenantIsolationTests : IDisposable
     public async Task CreateCustomer_WithTenantA_ShouldOnlyBeVisibleToTenantA()
     {
         // Arrange
-        var tenantId = TenantId.Create(TenantA);
         var customer = Customer.Create(
             TenantA,
             "cust-001",
@@ -92,7 +98,7 @@ public class TenantIsolationTests : IDisposable
 
         // Assert - Verify reward exists for Tenant A
         var rewardForTenantA = await _context.Rewards
-            .FirstOrDefaultAsync(r => r.CustomerId == "cust-a" && r.TenantId == TenantA);
+            .FirstOrDefaultAsync(r => r.CustomerExternalId == "cust-a" && r.TenantId == TenantA);
         
         rewardForTenantA.Should().NotBeNull();
 
@@ -148,7 +154,6 @@ public class TenantIsolationTests : IDisposable
         updatedCustomerA.PointsBalance.Value.Should().Be(100);
 
         // Assert - Verify Tenant B customer still has zero points
-        // Assert - Verify Tenant A customer still has zero points
         var updatedCustomerB = await _context.Customers
             .FirstAsync(c => c.CustomerId == "cust-shared-id" && c.TenantId == TenantB);
         
