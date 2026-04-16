@@ -1,5 +1,6 @@
 using LoyaltySphere.Common.Domain;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
+using LoyaltySphere.RewardService.Domain.Enums;
 
 namespace LoyaltySphere.RewardService.Domain.Entities;
 
@@ -11,7 +12,7 @@ public class Campaign : Entity
 {
     public string CampaignName { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
-    public string CampaignType { get; private set; } = "Bonus"; // Bonus, Multiplier, Cashback, Referral
+    public CampaignType CampaignType { get; private set; } = CampaignType.Bonus;
     public int Priority { get; private set; } = 0; // Higher priority campaigns are evaluated first
     public decimal BonusPoints { get; private set; }
     public decimal? PointsMultiplier { get; private set; }
@@ -32,7 +33,7 @@ public class Campaign : Entity
         string tenantId,
         string campaignName,
         string description,
-        string campaignType,
+        CampaignType campaignType,
         DateTime startDate,
         DateTime endDate,
         int priority = 0,
@@ -85,7 +86,7 @@ public class Campaign : Entity
             tenantId,
             campaignName,
             description,
-            "Bonus",
+            CampaignType.Bonus,
             startDate,
             endDate,
             bonusPoints: bonusPoints,
@@ -115,7 +116,7 @@ public class Campaign : Entity
             tenantId,
             campaignName,
             description,
-            "Multiplier",
+            CampaignType.Multiplier,
             startDate,
             endDate,
             pointsMultiplier: pointsMultiplier,
@@ -144,7 +145,7 @@ public class Campaign : Entity
             tenantId,
             campaignName,
             description,
-            "Cashback",
+            CampaignType.Cashback,
             startDate,
             endDate,
             cashbackPercentage: cashbackPercentage,
@@ -190,7 +191,7 @@ public class Campaign : Entity
     /// <summary>
     /// Checks if a customer is eligible for this campaign
     /// </summary>
-    public bool IsCustomerEligible(string customerTier, Money transactionAmount, string? merchantCategory = null)
+    public bool IsCustomerEligible(CustomerTier customerTier, Money transactionAmount, string? merchantCategory = null)
     {
         if (!IsCurrentlyActive())
             return false;
@@ -198,7 +199,7 @@ public class Campaign : Entity
         // Check customer segment
         if (!string.IsNullOrEmpty(TargetCustomerSegment) && 
             TargetCustomerSegment != "All" && 
-            TargetCustomerSegment != customerTier)
+            TargetCustomerSegment != customerTier.ToString())
             return false;
 
         // Check minimum transaction amount
@@ -222,9 +223,9 @@ public class Campaign : Entity
 
         return CampaignType switch
         {
-            "Bonus" => Points.Create(BonusPoints),
-            "Multiplier" => basePoints.Multiply(PointsMultiplier ?? 1),
-            "Cashback" => Points.Create(transactionAmount.Amount * (CashbackPercentage ?? 0) / 100),
+            CampaignType.Bonus => Points.Create(BonusPoints),
+            CampaignType.Multiplier => basePoints.Multiply(PointsMultiplier ?? 1),
+            CampaignType.Cashback => Points.Create(transactionAmount.Amount * (CashbackPercentage ?? 0) / 100),
             _ => Points.Zero
         };
     }

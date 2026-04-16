@@ -1,9 +1,8 @@
 using LoyaltySphere.RewardService.Application.Services;
 using LoyaltySphere.RewardService.Domain.Entities;
+using LoyaltySphere.RewardService.Domain.Repositories;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
-using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace LoyaltySphere.RewardService.Application.Commands.CalculateReward;
@@ -14,16 +13,16 @@ namespace LoyaltySphere.RewardService.Application.Commands.CalculateReward;
 /// </summary>
 public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardCommand, CalculateRewardResponse>
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IRewardCalculationService _calculationService;
     private readonly ILogger<CalculateRewardCommandHandler> _logger;
 
     public CalculateRewardCommandHandler(
-        ApplicationDbContext context,
+        IUnitOfWork unitOfWork,
         IRewardCalculationService calculationService,
         ILogger<CalculateRewardCommandHandler> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _calculationService = calculationService;
         _logger = logger;
     }
@@ -41,18 +40,13 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
         var customer = await GetOrCreateCustomerAsync(request.TenantId, request.CustomerId, cancellationToken);
 
         // Step 2: Get applicable reward rules
-        var applicableRules = await _context.RewardRules
-            .Where(r => r.TenantId == request.TenantId && r.IsActive)
-            .ToListAsync(cancellationToken);
+        var applicableRules = await _unitOfWork.RewardRules
+            .GetActiveByTenantAsync(request.TenantId, cancellationToken);
 
         // Step 3: Get active campaigns
         var now = DateTime.UtcNow;
-        var activeCampaigns = await _context.Campaigns
-            .Where(c => c.TenantId == request.TenantId 
-                && c.IsActive 
-                && c.StartDate <= now 
-                && c.EndDate >= now)
-            .ToListAsync(cancellationToken);
+        var activeCampaigns = await _unitOfWork.Campaigns
+            .GetActiveCampaignsAsync(request.TenantId, now, cancellationToken);
 
         // Step 4: Calculate reward
         var transactionAmount = Money.Create(request.TransactionAmount, request.Currency);
@@ -83,7 +77,7 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
             request.TransactionId,
             request.MerchantId);
 
-        _context.Rewards.Add(reward);
+        await _unitOfWork.Rewards.AddAsync(reward, cancellationToken);
 
         // Step 6: Award points to customer
         customer.AwardPoints(
@@ -101,7 +95,7 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
         reward.MarkAsProcessed();
 
         // Step 9: Save changes (this will publish domain events via outbox)
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Reward calculated successfully. Customer {CustomerId} earned {Points} points. New balance: {Balance}",
@@ -118,7 +112,7 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
             BasePoints = calculationResult.BasePoints.Value,
             CampaignBonus = calculationResult.CampaignBonus.Value,
             NewBalance = customer.PointsBalance.Value,
-            CustomerTier = customer.Tier,
+            CustomerTier = customer.Tier.ToString(),
             AppliedRuleName = calculationResult.AppliedRule?.RuleName,
             AppliedCampaignName = calculationResult.AppliedCampaign?.CampaignName,
             TierMultiplier = calculationResult.TierMultiplier,
@@ -134,10 +128,8 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
         string customerId,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(
-                c => c.TenantId == tenantId && c.CustomerId == customerId,
-                cancellationToken);
+        var customer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(customerId, cancellationToken);
 
         if (customer == null)
         {
@@ -150,8 +142,8 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
                 "Customer", // Last name
                 $"{customerId}@example.com"); // Email - should be provided
 
-            _context.Customers.Add(customer);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.Customers.AddAsync(customer, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         return customer;

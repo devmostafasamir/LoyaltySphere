@@ -18,11 +18,17 @@ public interface IRewardRepository
     /// </summary>
     Task<List<Reward>> GetByCustomerIdAsync(
         string customerId,
+        string? rewardType = null,
         DateTime? startDate = null,
         DateTime? endDate = null,
-        string? rewardType = null,
-        int skip = 0,
-        int take = 50,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets rewards by date range.
+    /// </summary>
+    Task<List<Reward>> GetByDateRangeAsync(
+        DateTime startDate,
+        DateTime endDate,
         CancellationToken cancellationToken = default);
 
     /// <summary>

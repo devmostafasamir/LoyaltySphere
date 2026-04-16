@@ -1,6 +1,5 @@
-using LoyaltySphere.RewardService.Infrastructure.Persistence;
+using LoyaltySphere.RewardService.Domain.Repositories;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace LoyaltySphere.RewardService.Application.Queries.GetCustomerBalance;
 
@@ -10,22 +9,19 @@ namespace LoyaltySphere.RewardService.Application.Queries.GetCustomerBalance;
 /// </summary>
 public class GetCustomerBalanceQueryHandler : IRequestHandler<GetCustomerBalanceQuery, CustomerBalanceResponse>
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public GetCustomerBalanceQueryHandler(ApplicationDbContext context)
+    public GetCustomerBalanceQueryHandler(IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<CustomerBalanceResponse> Handle(
         GetCustomerBalanceQuery request,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                c => c.TenantId == request.TenantId && c.CustomerId == request.CustomerId,
-                cancellationToken);
+        var customer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(request.CustomerId, cancellationToken);
 
         if (customer == null)
         {
@@ -33,7 +29,7 @@ public class GetCustomerBalanceQueryHandler : IRequestHandler<GetCustomerBalance
         }
 
         var (nextTierThreshold, progressPercentage) = CalculateTierProgress(
-            customer.Tier,
+            customer.Tier.ToString(),
             customer.LifetimePoints.Value);
 
         return new CustomerBalanceResponse
@@ -44,7 +40,7 @@ public class GetCustomerBalanceQueryHandler : IRequestHandler<GetCustomerBalance
             Email = customer.Email,
             PointsBalance = customer.PointsBalance.Value,
             LifetimePoints = customer.LifetimePoints.Value,
-            Tier = customer.Tier,
+            Tier = customer.Tier.ToString(),
             EnrolledAt = customer.EnrolledAt,
             IsActive = customer.IsActive,
             NextTierThreshold = nextTierThreshold,

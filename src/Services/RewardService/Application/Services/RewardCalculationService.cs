@@ -1,4 +1,5 @@
 using LoyaltySphere.RewardService.Domain.Entities;
+using LoyaltySphere.RewardService.Domain.Services;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
@@ -6,16 +7,29 @@ namespace LoyaltySphere.RewardService.Application.Services;
 
 /// <summary>
 /// Core service for calculating rewards based on transactions.
-/// Applies reward rules, campaigns, and tier bonuses.
-/// This is the heart of the loyalty program logic.
+/// Orchestrates domain services following Clean Architecture.
+/// Application layer coordinates, domain services contain business logic.
 /// </summary>
 public class RewardCalculationService : IRewardCalculationService
 {
     private readonly ILogger<RewardCalculationService> _logger;
+    private readonly ITierCalculationService _tierCalculationService;
+    private readonly IRewardRuleSelector _rewardRuleSelector;
+    private readonly ICampaignEligibilityChecker _campaignEligibilityChecker;
+    private readonly IPointsCapService _pointsCapService;
 
-    public RewardCalculationService(ILogger<RewardCalculationService> logger)
+    public RewardCalculationService(
+        ILogger<RewardCalculationService> logger,
+        ITierCalculationService tierCalculationService,
+        IRewardRuleSelector rewardRuleSelector,
+        ICampaignEligibilityChecker campaignEligibilityChecker,
+        IPointsCapService pointsCapService)
     {
         _logger = logger;
+        _tierCalculationService = tierCalculationService;
+        _rewardRuleSelector = rewardRuleSelector;
+        _campaignEligibilityChecker = campaignEligibilityChecker;
+        _pointsCapService = pointsCapService;
     }
 
     /// <summary>
@@ -36,8 +50,12 @@ public class RewardCalculationService : IRewardCalculationService
             customer.CustomerId,
             transactionAmount);
 
-        // Step 1: Find the best matching reward rule
-        var selectedRule = SelectBestRule(applicableRules, transactionAmount, merchantId, merchantCategory);
+        // Step 1: Find the best matching reward rule using domain service
+        var selectedRule = _rewardRuleSelector.SelectBestRule(
+            applicableRules, 
+            transactionAmount, 
+            merchantId, 
+            merchantCategory);
         
         if (selectedRule == null)
         {
@@ -53,25 +71,28 @@ public class RewardCalculationService : IRewardCalculationService
         var basePoints = selectedRule.CalculatePoints(transactionAmount);
         _logger.LogDebug("Base points calculated: {Points} using rule {RuleName}", basePoints, selectedRule.RuleName);
 
-        // Step 3: Apply tier multiplier
-        var tierMultiplier = GetTierMultiplier(customer.Tier);
+        // Step 3: Apply tier multiplier using domain service
+        var tierMultiplier = _tierCalculationService.GetTierMultiplier(customer.Tier);
         var pointsWithTierBonus = basePoints.Multiply(tierMultiplier);
         _logger.LogDebug("Points after tier bonus ({Tier}): {Points}", customer.Tier, pointsWithTierBonus);
 
-        // Step 4: Apply campaign bonuses
+        // Step 4: Apply campaign bonuses using domain service
         var campaignBonus = Points.Zero;
         Campaign? appliedCampaign = null;
 
-        foreach (var campaign in activeCampaigns.OrderByDescending(c => c.Priority))
+        var eligibleCampaigns = _campaignEligibilityChecker.GetEligibleCampaigns(
+            activeCampaigns,
+            customer,
+            transactionAmount,
+            merchantCategory);
+
+        foreach (var campaign in eligibleCampaigns)
         {
-            if (campaign.IsCustomerEligible(customer.Tier, transactionAmount, merchantCategory))
+            var bonus = campaign.CalculateBonusPoints(pointsWithTierBonus, transactionAmount);
+            if (bonus.IsGreaterThan(campaignBonus))
             {
-                var bonus = campaign.CalculateBonusPoints(pointsWithTierBonus, transactionAmount);
-                if (bonus.IsGreaterThan(campaignBonus))
-                {
-                    campaignBonus = bonus;
-                    appliedCampaign = campaign;
-                }
+                campaignBonus = bonus;
+                appliedCampaign = campaign;
             }
         }
 
@@ -86,8 +107,8 @@ public class RewardCalculationService : IRewardCalculationService
         // Step 5: Calculate total points
         var totalPoints = pointsWithTierBonus.Add(campaignBonus);
 
-        // Step 6: Apply any caps or limits
-        var finalPoints = ApplyPointsCap(totalPoints, transactionAmount);
+        // Step 6: Apply any caps or limits using domain service
+        var finalPoints = _pointsCapService.ApplyPointsCap(totalPoints, transactionAmount);
 
         _logger.LogInformation(
             "Reward calculation complete. Base: {Base}, Tier Bonus: {TierBonus}, Campaign: {Campaign}, Total: {Total}",
@@ -132,8 +153,8 @@ public class RewardCalculationService : IRewardCalculationService
         // Convert to points (1 EGP = 1 point for simplicity)
         var cashbackPoints = Points.Create(cashbackAmount.Amount);
 
-        // Apply tier bonus
-        var tierMultiplier = GetTierMultiplier(customer.Tier);
+        // Apply tier bonus using domain service
+        var tierMultiplier = _tierCalculationService.GetTierMultiplier(customer.Tier);
         var finalPoints = cashbackPoints.Multiply(tierMultiplier);
 
         _logger.LogInformation(
@@ -187,59 +208,6 @@ public class RewardCalculationService : IRewardCalculationService
 
         _logger.LogInformation("Redemption validation passed");
         return Task.FromResult(RedemptionValidationResult.Success());
-    }
-
-    /// <summary>
-    /// Selects the best reward rule based on priority and applicability.
-    /// </summary>
-    private RewardRule? SelectBestRule(
-        IEnumerable<RewardRule> rules,
-        Money transactionAmount,
-        string? merchantId,
-        string? merchantCategory)
-    {
-        return rules
-            .Where(r => r.AppliesTo(transactionAmount, merchantId, merchantCategory))
-            .OrderByDescending(r => r.Priority)
-            .ThenByDescending(r => r.PointsPerUnit)
-            .FirstOrDefault();
-    }
-
-    /// <summary>
-    /// Gets the points multiplier based on customer tier.
-    /// Higher tiers earn more points per transaction.
-    /// </summary>
-    private decimal GetTierMultiplier(string tier)
-    {
-        return tier switch
-        {
-            "Platinum" => 1.5m,  // 50% bonus
-            "Gold" => 1.3m,      // 30% bonus
-            "Silver" => 1.15m,   // 15% bonus
-            "Bronze" => 1.0m,    // No bonus
-            _ => 1.0m
-        };
-    }
-
-    /// <summary>
-    /// Applies maximum points cap to prevent abuse.
-    /// Example: Maximum 10% of transaction amount as points.
-    /// </summary>
-    private Points ApplyPointsCap(Points points, Money transactionAmount)
-    {
-        // Cap at 10% of transaction amount
-        var maxPoints = Points.Create(transactionAmount.Amount * 0.10m);
-
-        if (points.IsGreaterThan(maxPoints))
-        {
-            _logger.LogWarning(
-                "Points capped from {Original} to {Capped} (10% of transaction)",
-                points,
-                maxPoints);
-            return maxPoints;
-        }
-
-        return points;
     }
 }
 

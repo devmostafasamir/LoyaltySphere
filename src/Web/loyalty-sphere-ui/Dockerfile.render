@@ -1,0 +1,51 @@
+# ============================================
+# LoyaltySphere Frontend - Render.com Dockerfile
+# Optimized for Render deployment
+# ============================================
+
+# Stage 1: Build
+FROM node:20-alpine AS build
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --legacy-peer-deps --production=false
+
+# Copy source code
+COPY . .
+
+# Build application for production
+RUN npm run build -- --configuration production
+
+# Stage 2: Runtime with Nginx
+FROM nginx:alpine AS final
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy custom nginx configuration
+COPY nginx.render.conf /etc/nginx/nginx.conf
+
+# Copy built application
+COPY --from=build /app/dist/loyalty-sphere-ui/browser /usr/share/nginx/html
+
+# Create environment config script
+RUN echo '#!/bin/sh' > /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'cat > /usr/share/nginx/html/assets/config.js << EOF' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'window.ENV = {' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo '  apiUrl: "${API_URL}"' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo '};' >> /docker-entrypoint.d/40-generate-config.sh && \
+    echo 'EOF' >> /docker-entrypoint.d/40-generate-config.sh && \
+    chmod +x /docker-entrypoint.d/40-generate-config.sh
+
+# Expose port (Render uses PORT env variable)
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

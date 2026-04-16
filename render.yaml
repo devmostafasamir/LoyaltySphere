@@ -1,0 +1,112 @@
+# ============================================
+# LoyaltySphere - Render.com Configuration
+# ============================================
+# Deploy to Render: https://render.com
+# Instance: loyalty-sphere (capybara)
+# Region: AWS AP-NorthEast-1 (Tokyo)
+# ============================================
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  - type: pserv
+    name: loyalty-postgres
+    env: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./deployment/render/postgres.Dockerfile
+    dockerContext: ./deployment
+    envVars:
+      - key: POSTGRES_DB
+        value: loyalty_sphere
+      - key: POSTGRES_USER
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 10
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  - type: redis
+    name: loyalty-redis
+    plan: starter
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  # ============================================
+  # Reward Service (Backend API)
+  # ============================================
+  - type: web
+    name: loyalty-reward-service
+    env: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./src/Services/RewardService/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:80
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: loyalty-postgres
+          property: connectionString
+      - key: Redis__ConnectionString
+        fromService:
+          type: redis
+          name: loyalty-redis
+          property: connectionString
+      - key: CORS__AllowedOrigins
+        value: https://loyalty-sphere-ui.onrender.com
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - src/Services/RewardService/**
+        - src/BuildingBlocks/**
+
+  # ============================================
+  # Frontend (Angular + Nginx)
+  # ============================================
+  - type: web
+    name: loyalty-sphere-ui
+    env: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./src/Web/loyalty-sphere-ui/Dockerfile.render
+    dockerContext: ./src/Web/loyalty-sphere-ui
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_URL
+        fromService:
+          type: web
+          name: loyalty-reward-service
+          property: host
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - src/Web/loyalty-sphere-ui/**
+
+# ============================================
+# DEPLOYMENT INSTRUCTIONS:
+# ============================================
+# 1. Connect GitHub repository to Render
+# 2. Create new Blueprint instance
+# 3. Select this render.yaml file
+# 4. Render will automatically create all services
+# 5. Access your app at: https://loyalty-sphere-ui.onrender.com
+#
+# Manual deployment:
+# 1. Install Render CLI: npm install -g render-cli
+# 2. Login: render login
+# 3. Deploy: render blueprint deploy
+# ============================================

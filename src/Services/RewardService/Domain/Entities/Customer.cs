@@ -1,6 +1,7 @@
 using LoyaltySphere.Common.Domain;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
 using LoyaltySphere.RewardService.Domain.Events;
+using LoyaltySphere.RewardService.Domain.Enums;
 
 namespace LoyaltySphere.RewardService.Domain.Entities;
 
@@ -19,7 +20,7 @@ public class Customer : Entity
     public Points LifetimePoints { get; private set; } = Points.Zero;
     public DateTime EnrolledAt { get; private set; }
     public bool IsActive { get; private set; }
-    public string Tier { get; private set; } = "Bronze"; // Bronze, Silver, Gold, Platinum
+    public CustomerTier Tier { get; private set; } = CustomerTier.Bronze;
 
     // Navigation properties
     private readonly List<Reward> _rewards = new();
@@ -45,7 +46,7 @@ public class Customer : Entity
         LifetimePoints = Points.Zero;
         EnrolledAt = DateTime.UtcNow;
         IsActive = true;
-        Tier = "Bronze";
+        Tier = CustomerTier.Bronze;
 
         AddDomainEvent(new CustomerEnrolledEvent(Id, tenantId, customerId, email));
     }
@@ -146,10 +147,10 @@ public class Customer : Entity
 
         Tier = lifetimeValue switch
         {
-            >= 100000 => "Platinum",
-            >= 50000 => "Gold",
-            >= 10000 => "Silver",
-            _ => "Bronze"
+            >= 100000 => CustomerTier.Platinum,
+            >= 50000 => CustomerTier.Gold,
+            >= 10000 => CustomerTier.Silver,
+            _ => CustomerTier.Bronze
         };
 
         if (Tier != previousTier)
@@ -158,8 +159,8 @@ public class Customer : Entity
                 Id,
                 TenantId,
                 CustomerId,
-                previousTier,
-                Tier,
+                previousTier.ToString(),
+                Tier.ToString(),
                 LifetimePoints));
         }
     }

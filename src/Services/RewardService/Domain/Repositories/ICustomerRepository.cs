@@ -35,6 +35,21 @@ public interface ICustomerRepository
     Task<int> GetCountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the total count of customers with optional filters.
+    /// </summary>
+    Task<int> CountAsync(string? tier = null, bool? isActive = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets paginated customers with optional filters.
+    /// </summary>
+    Task<List<Customer>> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? tier = null,
+        bool? isActive = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds a new customer to the repository.
     /// </summary>
     Task AddAsync(Customer customer, CancellationToken cancellationToken = default);

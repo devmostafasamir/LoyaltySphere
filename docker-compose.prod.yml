@@ -1,0 +1,195 @@
+version: '3.8'
+
+# LoyaltySphere - Production Docker Compose
+# Uses pre-built images from Docker Hub
+# Usage: docker compose -f docker-compose.prod.yml up -d
+
+services:
+  # ============================================
+  # PostgreSQL Database with RLS
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: loyalty-postgres
+    environment:
+      POSTGRES_DB: loyalty_sphere
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deployment/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./deployment/scripts/setup-rls.sql:/docker-entrypoint-initdb.d/02-setup-rls.sql
+      - ./deployment/scripts/seed-data.sql:/docker-entrypoint-initdb.d/03-seed-data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+  # ============================================
+  # RabbitMQ Message Broker
+  # ============================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: loyalty-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: loyalty-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+  # ============================================
+  # Reward Service (Pre-built from Docker Hub)
+  # ============================================
+  reward-service:
+    image: msaid356/loyalty-sphere:reward-service-latest
+    container_name: loyalty-reward-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:80
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=loyalty_sphere;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: ${RABBITMQ_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD:-guest}
+      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD:-redis}"
+      OpenTelemetry__ServiceName: reward-service
+      OpenTelemetry__Endpoint: http://jaeger:4317
+    ports:
+      - "5001:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # ============================================
+  # Angular Frontend (Pre-built from Docker Hub)
+  # ============================================
+  frontend:
+    image: msaid356/loyalty-sphere:frontend-latest
+    container_name: loyalty-frontend
+    environment:
+      NODE_ENV: production
+      API_URL: http://reward-service:80
+    ports:
+      - "4200:80"
+    depends_on:
+      - reward-service
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ============================================
+  # Jaeger (Distributed Tracing) - Optional
+  # ============================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: loyalty-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - loyalty-network
+    restart: unless-stopped
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  loyalty-network:
+    driver: bridge
+    name: loyalty-network
+
+# ============================================
+# Volumes (Persistent Data)
+# ============================================
+volumes:
+  postgres-data:
+    name: loyalty-postgres-data
+  rabbitmq-data:
+    name: loyalty-rabbitmq-data
+  redis-data:
+    name: loyalty-redis-data
+
+# ============================================
+# USAGE:
+# ============================================
+# Start all services:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# View logs:
+#   docker compose -f docker-compose.prod.yml logs -f
+#
+# Stop all services:
+#   docker compose -f docker-compose.prod.yml down
+#
+# Pull latest images:
+#   docker compose -f docker-compose.prod.yml pull
+#
+# Access services:
+#   - Frontend: http://localhost:4200
+#   - Reward Service: http://localhost:5001
+#   - RabbitMQ Management: http://localhost:15672
+#   - Jaeger UI: http://localhost:16686
+# ============================================

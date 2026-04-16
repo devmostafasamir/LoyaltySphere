@@ -1,5 +1,6 @@
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.Repositories;
+using LoyaltySphere.RewardService.Domain.Enums;
 using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,35 +27,46 @@ public class RewardRepository : IRewardRepository
 
     public async Task<List<Reward>> GetByCustomerIdAsync(
         string customerId,
+        string? rewardType = null,
         DateTime? startDate = null,
         DateTime? endDate = null,
-        string? rewardType = null,
-        int skip = 0,
-        int take = 50,
         CancellationToken cancellationToken = default)
     {
         var query = _context.Rewards
-            .Where(r => r.CustomerId == customerId);
+            .Where(r => r.CustomerExternalId == customerId && r.IsProcessed);
+
+        if (!string.IsNullOrWhiteSpace(rewardType))
+        {
+            // Parse string to enum for comparison
+            if (Enum.TryParse<RewardType>(rewardType, true, out var rewardTypeEnum))
+            {
+                query = query.Where(r => r.RewardType == rewardTypeEnum);
+            }
+        }
 
         if (startDate.HasValue)
         {
-            query = query.Where(r => r.CreatedAt >= startDate.Value);
+            query = query.Where(r => r.ProcessedAt >= startDate.Value);
         }
 
         if (endDate.HasValue)
         {
-            query = query.Where(r => r.CreatedAt <= endDate.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(rewardType))
-        {
-            query = query.Where(r => r.RewardType == rewardType);
+            query = query.Where(r => r.ProcessedAt <= endDate.Value);
         }
 
         return await query
+            .OrderByDescending(r => r.ProcessedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Reward>> GetByDateRangeAsync(
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Rewards
+            .Where(r => r.CreatedAt >= startDate && r.CreatedAt <= endDate)
             .OrderByDescending(r => r.CreatedAt)
-            .Skip(skip)
-            .Take(take)
             .ToListAsync(cancellationToken);
     }
 
@@ -66,7 +78,7 @@ public class RewardRepository : IRewardRepository
         CancellationToken cancellationToken = default)
     {
         var query = _context.Rewards
-            .Where(r => r.CustomerId == customerId);
+            .Where(r => r.CustomerExternalId == customerId);
 
         if (startDate.HasValue)
         {
@@ -80,7 +92,11 @@ public class RewardRepository : IRewardRepository
 
         if (!string.IsNullOrWhiteSpace(rewardType))
         {
-            query = query.Where(r => r.RewardType == rewardType);
+            // Parse string to enum for comparison
+            if (Enum.TryParse<RewardType>(rewardType, true, out var rewardTypeEnum))
+            {
+                query = query.Where(r => r.RewardType == rewardTypeEnum);
+            }
         }
 
         return await query.CountAsync(cancellationToken);

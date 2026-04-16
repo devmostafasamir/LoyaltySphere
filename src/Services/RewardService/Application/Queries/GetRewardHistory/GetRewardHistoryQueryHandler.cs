@@ -1,6 +1,6 @@
-using LoyaltySphere.RewardService.Infrastructure.Persistence;
+using LoyaltySphere.RewardService.Application.Mappers;
+using LoyaltySphere.RewardService.Domain.Repositories;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace LoyaltySphere.RewardService.Application.Queries.GetRewardHistory;
 
@@ -10,61 +10,34 @@ namespace LoyaltySphere.RewardService.Application.Queries.GetRewardHistory;
 /// </summary>
 public class GetRewardHistoryQueryHandler : IRequestHandler<GetRewardHistoryQuery, RewardHistoryResponse>
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public GetRewardHistoryQueryHandler(ApplicationDbContext context)
+    public GetRewardHistoryQueryHandler(IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<RewardHistoryResponse> Handle(
         GetRewardHistoryQuery request,
         CancellationToken cancellationToken)
     {
-        // Build query
-        var query = _context.Rewards
-            .AsNoTracking()
-            .Where(r => r.TenantId == request.TenantId 
-                && r.CustomerExternalId == request.CustomerId
-                && r.IsProcessed);
-
-        // Apply filters
-        if (!string.IsNullOrEmpty(request.RewardType))
-        {
-            query = query.Where(r => r.RewardType == request.RewardType);
-        }
-
-        if (request.FromDate.HasValue)
-        {
-            query = query.Where(r => r.ProcessedAt >= request.FromDate.Value);
-        }
-
-        if (request.ToDate.HasValue)
-        {
-            query = query.Where(r => r.ProcessedAt <= request.ToDate.Value);
-        }
-
-        // Get total count
-        var totalCount = await query.CountAsync(cancellationToken);
+        // Get rewards with filters
+        var rewards = await _unitOfWork.Rewards
+            .GetByCustomerIdAsync(
+                request.CustomerId,
+                request.RewardType,
+                request.FromDate,
+                request.ToDate,
+                cancellationToken);
 
         // Apply pagination
-        var transactions = await query
+        var totalCount = rewards.Count;
+        var transactions = rewards
             .OrderByDescending(r => r.ProcessedAt)
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(r => new RewardTransactionDto
-            {
-                Id = r.Id,
-                Points = r.PointsAwarded.Value,
-                TransactionAmount = r.TransactionAmount.Amount,
-                RewardType = r.RewardType,
-                Source = r.Source,
-                Description = r.Description,
-                TransactionId = r.TransactionId,
-                CampaignId = r.CampaignId,
-                ProcessedAt = r.ProcessedAt
-            })
-            .ToListAsync(cancellationToken);
+            .Select(RewardMapper.ToTransactionDto)
+            .ToList();
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
 

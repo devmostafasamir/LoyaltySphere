@@ -28,6 +28,19 @@ public interface ICampaignRepository
     Task<List<Campaign>> GetActiveCampaignsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets active campaigns within a date range.
+    /// </summary>
+    Task<List<Campaign>> GetActiveCampaignsAsync(
+        string tenantId,
+        DateTime currentDate,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the count of active campaigns.
+    /// </summary>
+    Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the total count of campaigns for the current tenant.
     /// </summary>
     Task<int> GetCountAsync(bool? isActive = null, CancellationToken cancellationToken = default);

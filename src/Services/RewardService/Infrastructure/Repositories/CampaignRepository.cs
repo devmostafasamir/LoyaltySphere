@@ -57,6 +57,31 @@ public class CampaignRepository : ICampaignRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<Campaign>> GetActiveCampaignsAsync(
+        string tenantId,
+        DateTime currentDate,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Campaigns
+            .Where(c => c.TenantId == tenantId
+                && c.IsActive 
+                && c.StartDate <= currentDate 
+                && c.EndDate >= currentDate)
+            .OrderByDescending(c => c.Priority)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> CountActiveAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        
+        return await _context.Campaigns
+            .CountAsync(c => c.IsActive 
+                && c.StartDate <= now 
+                && c.EndDate >= now, 
+                cancellationToken);
+    }
+
     public async Task<int> GetCountAsync(bool? isActive = null, CancellationToken cancellationToken = default)
     {
         var query = _context.Campaigns.AsQueryable();

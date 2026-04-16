@@ -1,9 +1,8 @@
 using LoyaltySphere.RewardService.Application.Services;
 using LoyaltySphere.RewardService.Domain.Entities;
+using LoyaltySphere.RewardService.Domain.Repositories;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
-using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace LoyaltySphere.RewardService.Application.Commands.RedeemPoints;
@@ -14,16 +13,16 @@ namespace LoyaltySphere.RewardService.Application.Commands.RedeemPoints;
 /// </summary>
 public class RedeemPointsCommandHandler : IRequestHandler<RedeemPointsCommand, RedeemPointsResponse>
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IRewardCalculationService _calculationService;
     private readonly ILogger<RedeemPointsCommandHandler> _logger;
 
     public RedeemPointsCommandHandler(
-        ApplicationDbContext context,
+        IUnitOfWork unitOfWork,
         IRewardCalculationService calculationService,
         ILogger<RedeemPointsCommandHandler> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _calculationService = calculationService;
         _logger = logger;
     }
@@ -38,10 +37,8 @@ public class RedeemPointsCommandHandler : IRequestHandler<RedeemPointsCommand, R
             request.PointsToRedeem);
 
         // Step 1: Get customer
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(
-                c => c.TenantId == request.TenantId && c.CustomerId == request.CustomerId,
-                cancellationToken);
+        var customer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(request.CustomerId, cancellationToken);
 
         if (customer == null)
         {
@@ -69,7 +66,7 @@ public class RedeemPointsCommandHandler : IRequestHandler<RedeemPointsCommand, R
             pointsToRedeem,
             $"{request.RedemptionType}: {request.RedemptionDetails ?? "N/A"}");
 
-        _context.Rewards.Add(redemption);
+        await _unitOfWork.Rewards.AddAsync(redemption, cancellationToken);
 
         // Step 4: Redeem points from customer
         customer.RedeemPoints(
@@ -80,7 +77,7 @@ public class RedeemPointsCommandHandler : IRequestHandler<RedeemPointsCommand, R
         redemption.MarkAsProcessed();
 
         // Step 6: Save changes
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Redemption successful. Customer {CustomerId} redeemed {Points} points. Remaining balance: {Balance}",

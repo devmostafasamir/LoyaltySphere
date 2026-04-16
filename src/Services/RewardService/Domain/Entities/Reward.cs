@@ -1,4 +1,5 @@
 using LoyaltySphere.Common.Domain;
+using LoyaltySphere.RewardService.Domain.Enums;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
 using LoyaltySphere.RewardService.Domain.Events;
 
@@ -14,7 +15,7 @@ public class Reward : Entity
     public string CustomerExternalId { get; private set; } = string.Empty;
     public Points PointsAwarded { get; private set; } = Points.Zero;
     public Money TransactionAmount { get; private set; } = Money.Zero();
-    public string RewardType { get; private set; } = string.Empty; // Earned, Redeemed, Bonus, Cashback
+    public RewardType RewardType { get; private set; } = RewardType.Earned;
     public string Source { get; private set; } = string.Empty; // POS, Online, Campaign, Manual
     public string? TransactionId { get; private set; }
     public string? CampaignId { get; private set; }
@@ -35,7 +36,7 @@ public class Reward : Entity
         string customerExternalId,
         Points pointsAwarded,
         Money transactionAmount,
-        string rewardType,
+        RewardType rewardType,
         string source,
         string description,
         string? transactionId = null,
@@ -76,7 +77,7 @@ public class Reward : Entity
             customerExternalId,
             pointsAwarded,
             transactionAmount,
-            "Earned",
+            RewardType.Earned,
             source,
             description,
             transactionId,
@@ -111,7 +112,7 @@ public class Reward : Entity
             customerExternalId,
             pointsRedeemed.Multiply(-1), // Negative for redemption
             Money.Zero(),
-            "Redeemed",
+            RewardType.Redeemed,
             "Redemption",
             description);
 
@@ -134,7 +135,7 @@ public class Reward : Entity
             customerExternalId,
             bonusPoints,
             Money.Zero(),
-            "Bonus",
+            RewardType.Bonus,
             "Campaign",
             description,
             null,
@@ -160,7 +161,7 @@ public class Reward : Entity
             customerExternalId,
             cashbackPoints,
             transactionAmount,
-            "Cashback",
+            RewardType.Cashback,
             "POS",
             description,
             transactionId);
@@ -213,7 +214,7 @@ public class Reward : Entity
             CustomerId,
             CustomerExternalId,
             PointsAwarded,
-            RewardType));
+            RewardType.ToString()));
     }
 
     /// <summary>
@@ -238,8 +239,8 @@ public class Reward : Entity
             error));
     }
 
-    public bool IsEarned => RewardType == "Earned";
-    public bool IsRedeemed => RewardType == "Redeemed";
-    public bool IsBonus => RewardType == "Bonus";
-    public bool IsCashback => RewardType == "Cashback";
+    public bool IsEarned => RewardType == RewardType.Earned;
+    public bool IsRedeemed => RewardType == RewardType.Redeemed;
+    public bool IsBonus => RewardType == RewardType.Bonus;
+    public bool IsCashback => RewardType == RewardType.Cashback;
 }

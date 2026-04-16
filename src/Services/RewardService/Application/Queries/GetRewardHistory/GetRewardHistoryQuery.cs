@@ -1,3 +1,4 @@
+using LoyaltySphere.RewardService.Application.DTOs;
 using MediatR;
 
 namespace LoyaltySphere.RewardService.Application.Queries.GetRewardHistory;
@@ -27,20 +28,4 @@ public record RewardHistoryResponse
     public required int PageNumber { get; init; }
     public required int PageSize { get; init; }
     public required int TotalPages { get; init; }
-}
-
-/// <summary>
-/// DTO for a single reward transaction.
-/// </summary>
-public record RewardTransactionDto
-{
-    public required Guid Id { get; init; }
-    public required decimal Points { get; init; }
-    public required decimal TransactionAmount { get; init; }
-    public required string RewardType { get; init; }
-    public required string Source { get; init; }
-    public required string Description { get; init; }
-    public string? TransactionId { get; init; }
-    public string? CampaignId { get; init; }
-    public required DateTime ProcessedAt { get; init; }
 }

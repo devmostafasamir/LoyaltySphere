@@ -1,10 +1,12 @@
 using Asp.Versioning;
 using LoyaltySphere.MultiTenancy;
+using LoyaltySphere.RewardService.Api.Contracts.Customers;
+using LoyaltySphere.RewardService.Application.DTOs;
+using LoyaltySphere.RewardService.Application.Mappers;
 using LoyaltySphere.RewardService.Domain.Entities;
-using LoyaltySphere.RewardService.Infrastructure.Persistence;
+using LoyaltySphere.RewardService.Domain.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace LoyaltySphere.RewardService.Api.Controllers;
 
@@ -18,16 +20,16 @@ namespace LoyaltySphere.RewardService.Api.Controllers;
 [Authorize]
 public class CustomersController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<CustomersController> _logger;
 
     public CustomersController(
-        ApplicationDbContext context,
+        IUnitOfWork unitOfWork,
         ITenantContext tenantContext,
         ILogger<CustomersController> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -40,9 +42,9 @@ public class CustomersController : ControllerBase
     /// <response code="201">Customer enrolled successfully</response>
     /// <response code="400">Invalid request or customer already exists</response>
     [HttpPost("enroll")]
-    [ProducesResponseType(typeof(CustomerResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CustomerResponse>> EnrollCustomer(
+    public async Task<ActionResult<CustomerDto>> EnrollCustomer(
         [FromBody] EnrollCustomerRequest request,
         CancellationToken cancellationToken)
     {
@@ -52,8 +54,8 @@ public class CustomersController : ControllerBase
             _tenantContext.TenantId);
 
         // Check if customer already exists
-        var existingCustomer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.CustomerId == request.CustomerId, cancellationToken);
+        var existingCustomer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(request.CustomerId, cancellationToken);
 
         if (existingCustomer != null)
         {
@@ -74,15 +76,15 @@ public class CustomersController : ControllerBase
             request.Email,
             request.PhoneNumber);
 
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.Customers.AddAsync(customer, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Customer {CustomerId} enrolled successfully with ID {Id}",
             customer.CustomerId,
             customer.Id);
 
-        var response = MapToResponse(customer);
+        var response = CustomerMapper.ToDto(customer);
         return CreatedAtAction(nameof(GetCustomer), new { customerId = customer.CustomerId }, response);
     }
 
@@ -94,14 +96,14 @@ public class CustomersController : ControllerBase
     /// <response code="200">Customer found</response>
     /// <response code="404">Customer not found</response>
     [HttpGet("{customerId}")]
-    [ProducesResponseType(typeof(CustomerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CustomerResponse>> GetCustomer(
+    public async Task<ActionResult<CustomerDto>> GetCustomer(
         string customerId,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+        var customer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(customerId, cancellationToken);
 
         if (customer == null)
         {
@@ -113,7 +115,7 @@ public class CustomersController : ControllerBase
             });
         }
 
-        return Ok(MapToResponse(customer));
+        return Ok(CustomerMapper.ToDto(customer));
     }
 
     /// <summary>
@@ -125,15 +127,15 @@ public class CustomersController : ControllerBase
     /// <response code="200">Customer updated successfully</response>
     /// <response code="404">Customer not found</response>
     [HttpPut("{customerId}")]
-    [ProducesResponseType(typeof(CustomerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CustomerResponse>> UpdateCustomer(
+    public async Task<ActionResult<CustomerDto>> UpdateCustomer(
         string customerId,
         [FromBody] UpdateCustomerRequest request,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+        var customer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(customerId, cancellationToken);
 
         if (customer == null)
         {
@@ -151,11 +153,11 @@ public class CustomersController : ControllerBase
             request.Email,
             request.PhoneNumber);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Customer {CustomerId} updated successfully", customerId);
 
-        return Ok(MapToResponse(customer));
+        return Ok(CustomerMapper.ToDto(customer));
     }
 
     /// <summary>
@@ -172,8 +174,8 @@ public class CustomersController : ControllerBase
         string customerId,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+        var customer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(customerId, cancellationToken);
 
         if (customer == null)
         {
@@ -181,7 +183,7 @@ public class CustomersController : ControllerBase
         }
 
         customer.Deactivate();
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Customer {CustomerId} deactivated", customerId);
 
@@ -202,8 +204,8 @@ public class CustomersController : ControllerBase
         string customerId,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+        var customer = await _unitOfWork.Customers
+            .GetByCustomerIdAsync(customerId, cancellationToken);
 
         if (customer == null)
         {
@@ -211,7 +213,7 @@ public class CustomersController : ControllerBase
         }
 
         customer.Reactivate();
-        await _context.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Customer {CustomerId} reactivated", customerId);
 
@@ -227,115 +229,24 @@ public class CustomersController : ControllerBase
     /// <param name="isActive">Filter by active status (optional)</param>
     /// <returns>Paginated list of customers</returns>
     [HttpGet]
-    [ProducesResponseType(typeof(PagedCustomersResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedCustomersResponse>> GetCustomers(
+    [ProducesResponseType(typeof(PagedCustomersDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedCustomersDto>> GetCustomers(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? tier = null,
         [FromQuery] bool? isActive = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.Customers.AsQueryable();
+        // Get paginated customers with filters
+        var customers = await _unitOfWork.Customers
+            .GetPagedAsync(pageNumber, pageSize, tier, isActive, cancellationToken);
 
-        // Apply filters
-        if (!string.IsNullOrEmpty(tier))
-        {
-            query = query.Where(c => c.Tier == tier);
-        }
+        // Get total count for pagination
+        var totalCount = await _unitOfWork.Customers
+            .CountAsync(tier, isActive, cancellationToken);
 
-        if (isActive.HasValue)
-        {
-            query = query.Where(c => c.IsActive == isActive.Value);
-        }
-
-        // Get total count
-        var totalCount = await query.CountAsync(cancellationToken);
-
-        // Get paginated results
-        var customers = await query
-            .OrderByDescending(c => c.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
-
-        var response = new PagedCustomersResponse
-        {
-            Customers = customers.Select(MapToResponse).ToList(),
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-        };
+        var response = CustomerMapper.ToPagedDto(customers, totalCount, pageNumber, pageSize);
 
         return Ok(response);
     }
-
-    private static CustomerResponse MapToResponse(Customer customer)
-    {
-        return new CustomerResponse
-        {
-            Id = customer.Id,
-            CustomerId = customer.CustomerId,
-            FirstName = customer.FirstName,
-            LastName = customer.LastName,
-            FullName = customer.FullName,
-            Email = customer.Email,
-            PhoneNumber = customer.PhoneNumber,
-            PointsBalance = customer.PointsBalance.Value,
-            LifetimePoints = customer.LifetimePoints.Value,
-            Tier = customer.Tier,
-            IsActive = customer.IsActive,
-            EnrolledAt = customer.EnrolledAt,
-            CreatedAt = customer.CreatedAt,
-            UpdatedAt = customer.UpdatedAt
-        };
-    }
-}
-
-// ============================================
-// Request/Response DTOs
-// ============================================
-
-public record EnrollCustomerRequest
-{
-    public required string CustomerId { get; init; }
-    public required string FirstName { get; init; }
-    public required string LastName { get; init; }
-    public required string Email { get; init; }
-    public string? PhoneNumber { get; init; }
-}
-
-public record UpdateCustomerRequest
-{
-    public required string FirstName { get; init; }
-    public required string LastName { get; init; }
-    public required string Email { get; init; }
-    public string? PhoneNumber { get; init; }
-}
-
-public record CustomerResponse
-{
-    public Guid Id { get; init; }
-    public string CustomerId { get; init; } = string.Empty;
-    public string FirstName { get; init; } = string.Empty;
-    public string LastName { get; init; } = string.Empty;
-    public string FullName { get; init; } = string.Empty;
-    public string Email { get; init; } = string.Empty;
-    public string? PhoneNumber { get; init; }
-    public decimal PointsBalance { get; init; }
-    public decimal LifetimePoints { get; init; }
-    public string Tier { get; init; } = string.Empty;
-    public bool IsActive { get; init; }
-    public DateTime EnrolledAt { get; init; }
-    public DateTime CreatedAt { get; init; }
-    public DateTime? UpdatedAt { get; init; }
-}
-
-public record PagedCustomersResponse
-{
-    public List<CustomerResponse> Customers { get; init; } = new();
-    public int PageNumber { get; init; }
-    public int PageSize { get; init; }
-    public int TotalCount { get; init; }
-    public int TotalPages { get; init; }
 }

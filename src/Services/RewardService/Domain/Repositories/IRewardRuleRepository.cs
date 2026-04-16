@@ -28,6 +28,11 @@ public interface IRewardRuleRepository
     Task<List<RewardRule>> GetActiveRulesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets active reward rules by tenant ID.
+    /// </summary>
+    Task<List<RewardRule>> GetActiveByTenantAsync(string tenantId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the total count of reward rules for the current tenant.
     /// </summary>
     Task<int> GetCountAsync(bool? isActive = null, CancellationToken cancellationToken = default);

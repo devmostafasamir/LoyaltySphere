@@ -53,6 +53,16 @@ public class RewardRuleRepository : IRewardRuleRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<RewardRule>> GetActiveByTenantAsync(
+        string tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.RewardRules
+            .Where(r => r.TenantId == tenantId && r.IsActive)
+            .OrderByDescending(r => r.Priority)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<int> GetCountAsync(bool? isActive = null, CancellationToken cancellationToken = default)
     {
         var query = _context.RewardRules.AsQueryable();

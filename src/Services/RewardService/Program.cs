@@ -1,16 +1,12 @@
-using LoyaltySphere.MultiTenancy;
 using LoyaltySphere.MultiTenancy.Middleware;
 using LoyaltySphere.RewardService.Api.Middleware;
-using LoyaltySphere.RewardService.Application.Services;
+using LoyaltySphere.RewardService.Infrastructure.Extensions;
 using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using LoyaltySphere.RewardService.Infrastructure.SignalR;
-using Asp.Versioning;
-using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
-using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,70 +24,27 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // ============================================
-// Add Services to Container
+// Add Services to Container (Clean Architecture)
 // ============================================
 
-// Multi-Tenancy
-builder.Services.AddScoped<ITenantContext, TenantContext>();
+// Multi-Tenancy (Dependency Inversion Principle)
+builder.Services.AddMultiTenancy();
 builder.Services.AddScoped<TenantResolutionMiddleware>();
 
-// Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsqlOptions =>
-        {
-            npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 3,
-                maxRetryDelay: TimeSpan.FromSeconds(5),
-                errorCodesToAdd: null);
-            npgsqlOptions.CommandTimeout(30);
-        });
-});
+// Persistence Layer (Repository Pattern + Unit of Work)
+builder.Services.AddPersistence(builder.Configuration);
 
-// Redis Cache
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-{
-    var configuration = builder.Configuration.GetConnectionString("Redis");
-    return ConnectionMultiplexer.Connect(configuration!);
-});
+// Application Layer (CQRS + Domain Services)
+builder.Services.AddApplicationServices();
 
-// MediatR for CQRS
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
-});
+// Caching Layer (Redis)
+builder.Services.AddCaching(builder.Configuration);
 
-// Application Services
-builder.Services.AddScoped<IRewardCalculationService, RewardCalculationService>();
-builder.Services.AddScoped<IRewardNotificationService, RewardNotificationService>();
+// Messaging Layer (RabbitMQ + MassTransit)
+builder.Services.AddMessaging(builder.Configuration);
 
-// MassTransit with RabbitMQ
-builder.Services.AddMassTransit(x =>
-{
-    // Register consumers
-    x.AddConsumers(typeof(Program).Assembly);
-
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
-        {
-            h.Username(builder.Configuration["RabbitMQ:Username"]!);
-            h.Password(builder.Configuration["RabbitMQ:Password"]!);
-        });
-
-        cfg.ConfigureEndpoints(context);
-    });
-});
-
-// SignalR
-builder.Services.AddSignalR(options =>
-{
-    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
-    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
-});
+// Real-Time Layer (SignalR)
+builder.Services.AddRealTimeServices();
 
 // Authentication & Authorization
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -121,13 +74,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// API Versioning
-builder.Services.AddApiVersioning(options =>
-{
-    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = true;
-});
+// API Versioning (Single Responsibility)
+builder.Services.AddApiVersioningConfiguration();
 
 // Controllers
 builder.Services.AddControllers();
@@ -194,11 +142,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Health Checks
+// Health Checks (Monitoring)
 builder.Services.AddHealthChecks();
-    // .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!) // Requires AspNetCore.HealthChecks.Npgsql package
-    // .AddRedis(builder.Configuration.GetConnectionString("Redis")!) // Requires AspNetCore.HealthChecks.Redis package
-    // .AddRabbitMQ(rabbitConnectionString: builder.Configuration["RabbitMQ:ConnectionString"]!); // Requires AspNetCore.HealthChecks.RabbitMQ package
 
 // ============================================
 // Build Application

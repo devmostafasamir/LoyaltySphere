@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using LoyaltySphere.MultiTenancy;
+using LoyaltySphere.RewardService.Api.Contracts.Rewards;
 using LoyaltySphere.RewardService.Application.Commands.CalculateReward;
 using LoyaltySphere.RewardService.Application.Commands.RedeemPoints;
 using LoyaltySphere.RewardService.Application.Queries.GetCustomerBalance;
@@ -192,34 +193,4 @@ public class RewardsController : ControllerBase
             tenant = _tenantContext.HasTenant ? _tenantContext.TenantId : "none"
         });
     }
-}
-
-// ============================================
-// Request DTOs
-// ============================================
-
-/// <summary>
-/// Request to calculate reward for a transaction.
-/// </summary>
-public record CalculateRewardRequest
-{
-    public required string CustomerId { get; init; }
-    public required decimal TransactionAmount { get; init; }
-    public string? Currency { get; init; }
-    public string? TransactionId { get; init; }
-    public string? MerchantId { get; init; }
-    public string? MerchantCategory { get; init; }
-    public string? ProductCategory { get; init; }
-    public DateTime? TransactionDate { get; init; }
-}
-
-/// <summary>
-/// Request to redeem loyalty points.
-/// </summary>
-public record RedeemPointsRequest
-{
-    public required string CustomerId { get; init; }
-    public required decimal PointsToRedeem { get; init; }
-    public required string RedemptionType { get; init; }
-    public string? RedemptionDetails { get; init; }
 }

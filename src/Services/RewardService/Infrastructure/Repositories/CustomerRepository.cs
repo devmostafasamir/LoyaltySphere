@@ -1,5 +1,6 @@
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.Repositories;
+using LoyaltySphere.RewardService.Domain.Enums;
 using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,7 +42,11 @@ public class CustomerRepository : ICustomerRepository
 
         if (!string.IsNullOrWhiteSpace(tier))
         {
-            query = query.Where(c => c.Tier == tier);
+            // Parse string to enum for comparison
+            if (Enum.TryParse<CustomerTier>(tier, true, out var tierEnum))
+            {
+                query = query.Where(c => c.Tier == tierEnum);
+            }
         }
 
         if (isActive.HasValue)
@@ -59,6 +64,57 @@ public class CustomerRepository : ICustomerRepository
     public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Customers.CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountAsync(string? tier = null, bool? isActive = null, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Customers.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(tier))
+        {
+            // Parse string to enum for comparison
+            if (Enum.TryParse<CustomerTier>(tier, true, out var tierEnum))
+            {
+                query = query.Where(c => c.Tier == tierEnum);
+            }
+        }
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(c => c.IsActive == isActive.Value);
+        }
+
+        return await query.CountAsync(cancellationToken);
+    }
+
+    public async Task<List<Customer>> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? tier = null,
+        bool? isActive = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Customers.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(tier))
+        {
+            // Parse string to enum for comparison
+            if (Enum.TryParse<CustomerTier>(tier, true, out var tierEnum))
+            {
+                query = query.Where(c => c.Tier == tierEnum);
+            }
+        }
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(c => c.IsActive == isActive.Value);
+        }
+
+        return await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task AddAsync(Customer customer, CancellationToken cancellationToken = default)
