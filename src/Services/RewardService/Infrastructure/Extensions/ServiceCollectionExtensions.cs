@@ -113,6 +113,12 @@ public static class ServiceCollectionExtensions
     {
         var redisConnectionString = configuration.GetConnectionString("Redis");
 
+        // Validate that user didn't accidentally paste Postgres connection string into Redis config in MonsterASP
+        if (!string.IsNullOrEmpty(redisConnectionString) && redisConnectionString.Contains("Host="))
+        {
+            throw new ArgumentException("⚠️ CONFIGURATION ERROR: Your 'Redis' connection string contains 'Host='. You have accidentally pasted your PostgreSQL database connection string into the Redis connection string setting inside the MonsterASP control panel! Please correct the Redis configuration variable.");
+        }
+
         // Parse connection string into ConfigurationOptions for fine-grained control
         var redisOptions = ConfigurationOptions.Parse(redisConnectionString!);
         redisOptions.AbortOnConnectFail = false;       // Don't crash if Redis is down at startup

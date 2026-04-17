@@ -1,0 +1,10 @@
+[build]
+  # This matches the output directory of Angular 18's Application Builder
+  publish = "dist/loyalty-sphere-ui/browser"
+  command = "npm run build"
+
+# SPA redirection: Forwards all requests to index.html so Angular handles routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

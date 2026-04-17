@@ -51,6 +51,16 @@ docker compose up -d
 # API: http://localhost:5001
 ```
 
+### Deploy to Netlify (Frontend)
+1. **Connect GitHub repository**.
+2. **Base Directory**: `src/Web/loyalty-sphere-ui`
+3. **Build Command**: `npm run build`
+4. **Publish Directory**: `dist/loyalty-sphere-ui/browser`
+5. **Environment Variables**: Ensure `NODE_VERSION` is set to `18` or higher.
+
+**Live Demo (Frontend):** https://loyaltysphere.netlify.app  
+**Live API (Backend):** http://loyaltysphere.runasp.net/swagger
+
 ### Deploy to Render.com (Production)
 
 ```bash
@@ -62,9 +72,6 @@ docker compose up -d
 # 2. Create Blueprint from render.yaml
 # 3. Deploy automatically
 ```
-
-**Live Demo (Frontend):** https://loyalty-sphere-ui.onrender.com  
-**Live API (Backend):** http://loyaltysphere.runasp.net/swagger
 
 ### Using Pre-built Images (Docker Hub)
 
