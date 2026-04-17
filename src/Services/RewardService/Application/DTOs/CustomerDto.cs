@@ -12,7 +12,7 @@ public record CustomerDto
     public required string LastName { get; init; }
     public required string FullName { get; init; }
     public required string Email { get; init; }
-    public required string PhoneNumber { get; init; }
+    public string? PhoneNumber { get; init; }
     public required string Tier { get; init; }
     public required decimal PointsBalance { get; init; }
     public required decimal LifetimePoints { get; init; }

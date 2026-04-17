@@ -36,7 +36,7 @@ public class RewardCalculationService : IRewardCalculationService
     /// Calculates total reward points for a transaction.
     /// Applies base rules, campaigns, and tier multipliers.
     /// </summary>
-    public async Task<RewardCalculationResult> CalculateRewardAsync(
+    public Task<RewardCalculationResult> CalculateRewardAsync(
         Customer customer,
         Money transactionAmount,
         IEnumerable<RewardRule> applicableRules,
@@ -64,7 +64,7 @@ public class RewardCalculationService : IRewardCalculationService
                 transactionAmount,
                 merchantId);
 
-            return RewardCalculationResult.NoReward("No applicable reward rule found");
+            return Task.FromResult(RewardCalculationResult.NoReward("No applicable reward rule found"));
         }
 
         // Step 2: Calculate base points from the rule
@@ -117,20 +117,20 @@ public class RewardCalculationService : IRewardCalculationService
             campaignBonus,
             finalPoints);
 
-        return RewardCalculationResult.Success(
+        return Task.FromResult(RewardCalculationResult.Success(
             finalPoints,
             basePoints,
             campaignBonus,
             selectedRule,
             appliedCampaign,
-            tierMultiplier);
+            tierMultiplier));
     }
 
     /// <summary>
     /// Calculates instant cashback for a transaction.
     /// Used by banks for immediate POS discounts.
     /// </summary>
-    public async Task<CashbackCalculationResult> CalculateInstantCashbackAsync(
+    public Task<CashbackCalculationResult> CalculateInstantCashbackAsync(
         Customer customer,
         Money transactionAmount,
         decimal cashbackPercentage,
@@ -162,11 +162,11 @@ public class RewardCalculationService : IRewardCalculationService
             cashbackAmount,
             finalPoints);
 
-        return new CashbackCalculationResult(
+        return Task.FromResult(new CashbackCalculationResult(
             finalPoints,
             cashbackAmount,
             cashbackPercentage,
-            tierMultiplier);
+            tierMultiplier));
     }
 
     /// <summary>

@@ -58,7 +58,7 @@ public class RewardsController : ControllerBase
 
         var command = new CalculateRewardCommand
         {
-            TenantId = _tenantContext.TenantId,
+            TenantId = _tenantContext.TenantId ?? string.Empty,
             CustomerId = request.CustomerId,
             TransactionAmount = request.TransactionAmount,
             Currency = request.Currency ?? "EGP",
@@ -95,7 +95,7 @@ public class RewardsController : ControllerBase
 
         var command = new RedeemPointsCommand
         {
-            TenantId = _tenantContext.TenantId,
+            TenantId = _tenantContext.TenantId ?? string.Empty,
             CustomerId = request.CustomerId,
             PointsToRedeem = request.PointsToRedeem,
             RedemptionType = request.RedemptionType,
@@ -125,7 +125,7 @@ public class RewardsController : ControllerBase
 
         var query = new GetCustomerBalanceQuery
         {
-            TenantId = _tenantContext.TenantId,
+            TenantId = _tenantContext.TenantId ?? string.Empty,
             CustomerId = customerId
         };
 
@@ -163,7 +163,7 @@ public class RewardsController : ControllerBase
 
         var query = new GetRewardHistoryQuery
         {
-            TenantId = _tenantContext.TenantId,
+            TenantId = _tenantContext.TenantId ?? string.Empty,
             CustomerId = customerId,
             PageNumber = pageNumber,
             PageSize = pageSize,

@@ -76,7 +76,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
         
         var rule = RewardRule.Create(TenantId, "Standard", "1 point", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m));
+            .Returns(() => Task.FromResult(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m)));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -106,7 +106,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
 
         var rule = RewardRule.Create(TenantId, "Standard", "1 point", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m));
+            .Returns(() => Task.FromResult(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m)));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -169,7 +169,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
 
         var rule = RewardRule.Create(TenantId, "Standard", "1 point", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m));
+            .Returns(() => Task.FromResult(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m)));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -204,7 +204,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
 
         var rule = RewardRule.Create(TenantId, "Silver Rule", "1.5 points", 1.5m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RewardCalculationResult.Success(Points.Create(150), Points.Create(100), Points.Create(0), rule, null, 1.5m));
+            .Returns(() => Task.FromResult(RewardCalculationResult.Success(Points.Create(150), Points.Create(100), Points.Create(0), rule, null, 1.5m)));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -224,7 +224,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
 
         var rule = RewardRule.Create(TenantId, "Standard", "1 point", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m));
+            .Returns(() => Task.FromResult(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m)));
 
         var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
 
@@ -287,7 +287,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
 
         var rule = RewardRule.Create(TenantId, "Standard Rule", "1 point per unit", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RewardCalculationResult.Success(Points.Create(110), Points.Create(100), Points.Create(0), rule, null, 1.1m));
+            .Returns(() => Task.FromResult(RewardCalculationResult.Success(Points.Create(110), Points.Create(100), Points.Create(0), rule, null, 1.1m)));
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);

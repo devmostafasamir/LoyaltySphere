@@ -91,7 +91,7 @@ public class CampaignsController : ControllerBase
         Campaign campaign = campaignType switch
         {
             CampaignType.Bonus => Campaign.CreateBonusCampaign(
-                _tenantContext.TenantId,
+                _tenantContext.TenantId ?? string.Empty,
                 request.CampaignName,
                 request.Description,
                 request.BonusPoints ?? 0,
@@ -103,7 +103,7 @@ public class CampaignsController : ControllerBase
                 request.Terms),
 
             CampaignType.Multiplier => Campaign.CreateMultiplierCampaign(
-                _tenantContext.TenantId,
+                _tenantContext.TenantId ?? string.Empty,
                 request.CampaignName,
                 request.Description,
                 request.PointsMultiplier ?? 1,
@@ -114,7 +114,7 @@ public class CampaignsController : ControllerBase
                 request.Terms),
 
             CampaignType.Cashback => Campaign.CreateCashbackCampaign(
-                _tenantContext.TenantId,
+                _tenantContext.TenantId ?? string.Empty,
                 request.CampaignName,
                 request.Description,
                 request.CashbackPercentage ?? 0,

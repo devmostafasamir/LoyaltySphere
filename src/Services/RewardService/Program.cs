@@ -11,6 +11,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using Serilog;
 using System;
 using LoyaltySphere.RewardService.Infrastructure.Persistence.Seeds;
+using Microsoft.AspNetCore.HttpOverrides;
 
 // Setup safe Bootstrap logger to catch builder crashes
 Log.Logger = new LoggerConfiguration()
@@ -137,13 +138,21 @@ builder.Services.AddAuthorization(options =>
     }
 });
 
+// Configure Forwarded Headers for reverse proxy support (MonsterASP)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 // API Versioning (Single Responsibility)
 builder.Services.AddApiVersioningConfiguration();
 
 // Controllers
 builder.Services.AddControllers();
 
-// Swagger/OpenAPI
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -224,6 +233,9 @@ var app = builder.Build();
 // Exception Handling (must be first)
 app.UseExceptionHandling();
 
+// Proxy support for shared hosting
+app.UseForwardedHeaders();
+
 // Serilog Request Logging
 app.UseSerilogRequestLogging();
 
@@ -266,8 +278,8 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
+        Log.Information("Applying database migrations...");
         await dbContext.Database.MigrateAsync();
-        Log.Information("Database migration completed successfully");
 
         // Execute SOLID decoupled data seeds
         var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContextSeed>>();
@@ -278,7 +290,15 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "An error occurred while migrating or seeding the database");
+        // LOG AND CONTINUE: Prevent startup crash if DB is momentarily unavailable
+        Log.Error(ex, "⚠️ CRITICAL: Database initialization failed. The app will start, but features may be broken.");
+        
+        try { 
+            var logPath = System.IO.Path.Combine(AppContext.BaseDirectory, "App_Data", "StartupCrashLog.txt");
+            var directoryPath = System.IO.Path.GetDirectoryName(logPath);
+            if (!string.IsNullOrEmpty(directoryPath)) { System.IO.Directory.CreateDirectory(directoryPath); }
+            await System.IO.File.AppendAllTextAsync(logPath, $"[{DateTime.UtcNow}] DB INIT FAILED: {ex}\n"); 
+        } catch { }
     }
 }
 

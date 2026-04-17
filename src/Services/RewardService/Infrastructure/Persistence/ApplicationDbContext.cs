@@ -83,7 +83,10 @@ public class ApplicationDbContext : DbContext
         {
             if (!_tenantContext.HasTenant)
             {
-                throw new InvalidOperationException("Tenant context has not been set");
+                // During initial migration or seeding at startup, there is no HTTP request/tenant context.
+                // We log a warning instead of throwing to prevent the 500.30 startup crash.
+                _logger.LogWarning("Tenant context has not been set. PostgreSQL RLS policies may restrict access.");
+                return;
             }
 
             // Set PostgreSQL session variable that RLS policies will use

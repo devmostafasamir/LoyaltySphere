@@ -90,7 +90,7 @@ public class RedisCacheService : ICacheService
         }
     }
 
-    public async Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
+    public Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
     {
         // IDistributedCache doesn't support prefix deletion natively.
         // For production, you'd use IConnectionMultiplexer.GetServer().Keys() + DeleteAsync().
@@ -98,6 +98,8 @@ public class RedisCacheService : ICacheService
         _logger.LogDebug(
             "Cache prefix removal requested for {Prefix}. Using TTL-based expiration instead.",
             prefix);
+
+        return Task.CompletedTask;
     }
 
     /// <summary>

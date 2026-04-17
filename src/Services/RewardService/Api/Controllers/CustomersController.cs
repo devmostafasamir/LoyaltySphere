@@ -69,7 +69,7 @@ public class CustomersController : ControllerBase
 
         // Create new customer
         var customer = Customer.Create(
-            _tenantContext.TenantId,
+            _tenantContext.TenantId ?? string.Empty,
             request.CustomerId,
             request.FirstName,
             request.LastName,

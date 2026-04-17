@@ -82,7 +82,7 @@ public class RewardRulesController : ControllerBase
         _logger.LogInformation("Creating reward rule {RuleName}", request.RuleName);
 
         var rule = RewardRule.Create(
-            _tenantContext.TenantId,
+            _tenantContext.TenantId ?? string.Empty,
             request.RuleName,
             request.Description,
             request.PointsPerUnit,
