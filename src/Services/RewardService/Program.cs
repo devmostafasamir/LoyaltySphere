@@ -9,22 +9,28 @@ using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Serilog;
+using System;
 using LoyaltySphere.RewardService.Infrastructure.Persistence.Seeds;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// ============================================
-// Configure Serilog
-// ============================================
+// Setup safe Bootstrap logger to catch builder crashes
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithProperty("Service", "RewardService")
     .WriteTo.Console()
-    .WriteTo.File("logs/reward-service-.log", rollingInterval: RollingInterval.Day)
-    .CreateLogger();
+    .CreateBootstrapLogger();
 
-builder.Host.UseSerilog();
+try
+{
+    Log.Information("Starting web application host");
+    var builder = WebApplication.CreateBuilder(args);
+
+    // ============================================
+    // Configure Serilog
+    // ============================================
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Service", "RewardService")
+        .WriteTo.Console());
 
 // ============================================
 // Add Services to Container (Clean Architecture)
@@ -46,13 +52,14 @@ builder.Services.AddCaching(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
 
 // Real-Time Layer (SignalR)
-builder.Services.AddRealTimeServices();
+builder.Services.AddRealTimeServices(builder.Configuration);
 
 // Authentication & Authorization
-// In Development: JWT validation is bypassed so the app runs without an OIDC provider.
-// In Production: Set Auth:Authority and Auth:Audience to your identity provider.
-var isDevBypass = builder.Environment.IsDevelopment() &&
-                  string.IsNullOrWhiteSpace(builder.Configuration["Auth:Authority"]);
+// In Development/Staging: JWT validation is bypassed if Authority is empty or default placeholder
+// In Production: Set Auth:Authority to your actual identity provider
+var authority = builder.Configuration["Auth:Authority"];
+var isDevBypass = string.IsNullOrWhiteSpace(authority) || 
+                  authority.Contains("your-identity-provider");
 
 if (isDevBypass)
 {
@@ -251,11 +258,10 @@ app.MapHub<RewardHub>("/hubs/rewards");
 app.MapHealthChecks("/health");
 
 // ============================================
-// Database Migration (Development only)
+// Database Migration & Seeding (Run across all environments)
 // ============================================
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     try
@@ -279,14 +285,18 @@ if (app.Environment.IsDevelopment())
 // ============================================
 // Run Application
 // ============================================
-try
-{
     Log.Information("Starting LoyaltySphere Reward Service");
     await app.RunAsync();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Application terminated unexpectedly");
+    // Write direct to Console so ANCM stdout redirect catches it if Serilog fails due to permissions!
+    Console.WriteLine($"[FATAL CRASH]: {ex}");
+    
+    // Explicitly write a text file to the application root since ASP.NET stdout logging is usually disabled by default in IIS.
+    try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "StartupCrashLog.txt"), ex.ToString()); } catch { }
+
+    Log.Fatal(ex, "Application terminated unexpectedly during Start");
 }
 finally
 {

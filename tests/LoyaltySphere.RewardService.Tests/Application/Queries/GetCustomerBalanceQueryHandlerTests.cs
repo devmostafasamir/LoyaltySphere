@@ -12,6 +12,7 @@ using LoyaltySphere.RewardService.Infrastructure.Repositories;
 using LoyaltySphere.RewardService.Domain.Repositories;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
+using LoyaltySphere.RewardService.Application.Interfaces;
 using LoyaltySphere.RewardService.Application.Queries.GetCustomerBalance;
 
 namespace LoyaltySphere.RewardService.Tests.Application.Queries;
@@ -53,7 +54,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -72,7 +73,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
     {
         // Arrange
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "non-existent" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act & Assert
         await handler.Invoking(h => h.Handle(query, CancellationToken.None))
@@ -88,7 +89,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -110,7 +111,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -131,7 +132,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -151,7 +152,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -172,7 +173,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -192,7 +193,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
@@ -211,7 +212,7 @@ public class GetCustomerBalanceQueryHandlerTests : IDisposable
         await _context.SaveChangesAsync();
 
         var query = new GetCustomerBalanceQuery { TenantId = TenantId, CustomerId = "cust-001" };
-        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork);
+        var handler = new GetCustomerBalanceQueryHandler(_unitOfWork, Mock.Of<ICacheService>(), Mock.Of<ILogger<GetCustomerBalanceQueryHandler>>());
 
         // Act
         var result = await handler.Handle(query, CancellationToken.None);

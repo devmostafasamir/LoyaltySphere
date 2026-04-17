@@ -1,25 +1,47 @@
+using LoyaltySphere.RewardService.Application.Interfaces;
 using LoyaltySphere.RewardService.Domain.Repositories;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace LoyaltySphere.RewardService.Application.Queries.GetCustomerBalance;
 
 /// <summary>
 /// Handles the GetCustomerBalanceQuery.
-/// Retrieves customer balance and tier information.
+/// Retrieves customer balance and tier information with Redis cache-aside.
 /// </summary>
 public class GetCustomerBalanceQueryHandler : IRequestHandler<GetCustomerBalanceQuery, CustomerBalanceResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICacheService _cacheService;
+    private readonly ILogger<GetCustomerBalanceQueryHandler> _logger;
 
-    public GetCustomerBalanceQueryHandler(IUnitOfWork unitOfWork)
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
+
+    public GetCustomerBalanceQueryHandler(
+        IUnitOfWork unitOfWork,
+        ICacheService cacheService,
+        ILogger<GetCustomerBalanceQueryHandler> logger)
     {
         _unitOfWork = unitOfWork;
+        _cacheService = cacheService;
+        _logger = logger;
     }
 
     public async Task<CustomerBalanceResponse> Handle(
         GetCustomerBalanceQuery request,
         CancellationToken cancellationToken)
     {
+        // Step 1: Try cache first (cache-aside pattern)
+        var cacheKey = $"customer:balance:{request.CustomerId}";
+        var cached = await _cacheService.GetAsync<CustomerBalanceResponse>(cacheKey, cancellationToken);
+
+        if (cached != null)
+        {
+            _logger.LogDebug("Balance for {CustomerId} served from cache", request.CustomerId);
+            return cached;
+        }
+
+        // Step 2: Cache miss — fetch from database
         var customer = await _unitOfWork.Customers
             .GetByCustomerIdAsync(request.CustomerId, cancellationToken);
 
@@ -32,7 +54,7 @@ public class GetCustomerBalanceQueryHandler : IRequestHandler<GetCustomerBalance
             customer.Tier.ToString(),
             customer.LifetimePoints.Value);
 
-        return new CustomerBalanceResponse
+        var response = new CustomerBalanceResponse
         {
             CustomerId = customer.CustomerId,
             FirstName = customer.FirstName,
@@ -46,6 +68,12 @@ public class GetCustomerBalanceQueryHandler : IRequestHandler<GetCustomerBalance
             NextTierThreshold = nextTierThreshold,
             ProgressToNextTier = progressPercentage
         };
+
+        // Step 3: Write result to cache for subsequent reads
+        await _cacheService.SetAsync(cacheKey, response, CacheDuration, cancellationToken);
+        _logger.LogDebug("Balance for {CustomerId} cached for {Duration}", request.CustomerId, CacheDuration);
+
+        return response;
     }
 
     private (decimal threshold, decimal progress) CalculateTierProgress(string currentTier, decimal lifetimePoints)
@@ -84,3 +112,4 @@ public class GetCustomerBalanceQueryHandler : IRequestHandler<GetCustomerBalance
         return (nextThreshold, Math.Min(progress, 100m));
     }
 }
+

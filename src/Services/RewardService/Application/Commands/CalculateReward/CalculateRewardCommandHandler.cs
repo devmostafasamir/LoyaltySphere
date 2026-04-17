@@ -1,3 +1,4 @@
+using LoyaltySphere.RewardService.Application.Interfaces;
 using LoyaltySphere.RewardService.Application.Services;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.Repositories;
@@ -15,15 +16,18 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRewardCalculationService _calculationService;
+    private readonly ICacheService _cacheService;
     private readonly ILogger<CalculateRewardCommandHandler> _logger;
 
     public CalculateRewardCommandHandler(
         IUnitOfWork unitOfWork,
         IRewardCalculationService calculationService,
+        ICacheService cacheService,
         ILogger<CalculateRewardCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _calculationService = calculationService;
+        _cacheService = cacheService;
         _logger = logger;
     }
 
@@ -58,6 +62,12 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
             request.MerchantId,
             request.MerchantCategory,
             cancellationToken);
+
+        if (calculationResult == null)
+        {
+            _logger.LogError("Reward calculation service returned null result for customer {CustomerId}", request.CustomerId);
+            throw new InvalidOperationException("Reward calculation service returned no result");
+        }
 
         if (!calculationResult.IsSuccess)
         {
@@ -96,6 +106,9 @@ public class CalculateRewardCommandHandler : IRequestHandler<CalculateRewardComm
 
         // Step 9: Save changes (this will publish domain events via outbox)
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Step 9.5: Invalidate cached balance (stale after points change)
+        await _cacheService.RemoveAsync($"customer:balance:{customer.CustomerId}", cancellationToken);
 
         _logger.LogInformation(
             "Reward calculated successfully. Customer {CustomerId} earned {Points} points. New balance: {Balance}",

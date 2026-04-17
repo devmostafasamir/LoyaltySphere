@@ -2,9 +2,10 @@ using LoyaltySphere.MultiTenancy;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Infrastructure.Persistence.Interceptors;
 using LoyaltySphere.EventBus.Outbox;
-using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Linq.Expressions;
 
 namespace LoyaltySphere.RewardService.Infrastructure.Persistence;
 
@@ -17,15 +18,17 @@ public class ApplicationDbContext : DbContext
 {
     private readonly ITenantContext _tenantContext;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger<ApplicationDbContext> _logger;
 
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options,
         ITenantContext tenantContext,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory? loggerFactory = null)
         : base(options)
     {
         _tenantContext = tenantContext;
-        _loggerFactory = loggerFactory;
+        _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+        _logger = _loggerFactory.CreateLogger<ApplicationDbContext>() ?? NullLogger<ApplicationDbContext>.Instance;
     }
 
     // Domain entities
@@ -44,34 +47,22 @@ public class ApplicationDbContext : DbContext
         // Apply all entity configurations from the assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
-        // Configure multi-tenancy: Add tenant_id to all entities
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            // Add tenant_id property if it doesn't exist
-            // Configure multi-tenancy for entities that have a TenantId property
-            if (entityType.ClrType.GetProperty("TenantId") != null)
-            {
-                modelBuilder.Entity(entityType.ClrType).Property("TenantId").IsRequired();
-                
-                // Configure global query filter for defense-in-depth
-                var parameter = Expression.Parameter(entityType.ClrType, "e");
-                var body = Expression.Equal(
-                    Expression.Property(parameter, "TenantId"),
-                    Expression.Property(Expression.Constant(_tenantContext), nameof(ITenantContext.TenantId))
-                );
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, parameter));
-            }
-        }
+        // Multi-tenancy is handled via TenantInterceptor for saving
+        // and database-level RLS policies for querying.
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);
 
-        // Add interceptors - create loggers from factory
+        // Add interceptors - create loggers from factory (handle null/broken factory for tests)
+        // Use non-generic CreateLogger to avoid broken Logger<T> wrappers that crash when inner logger is null
+        var tenantLogger = _loggerFactory.CreateLogger(typeof(TenantInterceptor).FullName!) ?? NullLogger.Instance;
+        var outboxLogger = _loggerFactory.CreateLogger(typeof(OutboxInterceptor).FullName!) ?? NullLogger.Instance;
+        
         optionsBuilder.AddInterceptors(
-            new TenantInterceptor(_tenantContext, _loggerFactory.CreateLogger<TenantInterceptor>()),
-            new OutboxInterceptor(_loggerFactory.CreateLogger<OutboxInterceptor>()));
+            new TenantInterceptor(_tenantContext, tenantLogger),
+            new OutboxInterceptor(outboxLogger));
 
         // Enable sensitive data logging in development
         if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
@@ -98,8 +89,7 @@ public class ApplicationDbContext : DbContext
             // Set PostgreSQL session variable that RLS policies will use
             var sql = $"SET app.current_tenant = '{_tenantContext.TenantId}';";
             
-            var logger = _loggerFactory.CreateLogger<ApplicationDbContext>();
-            logger.LogDebug("Setting PostgreSQL tenant context: {TenantId}", _tenantContext.TenantId);
+            _logger.LogDebug("Setting PostgreSQL tenant context: {TenantId}", _tenantContext.TenantId);
             
             await Database.ExecuteSqlRawAsync(sql, cancellationToken);
         }

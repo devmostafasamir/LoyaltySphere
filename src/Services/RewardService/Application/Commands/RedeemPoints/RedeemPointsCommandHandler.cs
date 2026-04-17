@@ -1,3 +1,4 @@
+using LoyaltySphere.RewardService.Application.Interfaces;
 using LoyaltySphere.RewardService.Application.Services;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.Repositories;
@@ -15,15 +16,18 @@ public class RedeemPointsCommandHandler : IRequestHandler<RedeemPointsCommand, R
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRewardCalculationService _calculationService;
+    private readonly ICacheService _cacheService;
     private readonly ILogger<RedeemPointsCommandHandler> _logger;
 
     public RedeemPointsCommandHandler(
         IUnitOfWork unitOfWork,
         IRewardCalculationService calculationService,
+        ICacheService cacheService,
         ILogger<RedeemPointsCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _calculationService = calculationService;
+        _cacheService = cacheService;
         _logger = logger;
     }
 
@@ -78,6 +82,9 @@ public class RedeemPointsCommandHandler : IRequestHandler<RedeemPointsCommand, R
 
         // Step 6: Save changes
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Step 6.5: Invalidate cached balance (stale after points change)
+        await _cacheService.RemoveAsync($"customer:balance:{customer.CustomerId}", cancellationToken);
 
         _logger.LogInformation(
             "Redemption successful. Customer {CustomerId} redeemed {Points} points. Remaining balance: {Balance}",

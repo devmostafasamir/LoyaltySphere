@@ -14,9 +14,9 @@ namespace LoyaltySphere.RewardService.Infrastructure.Persistence.Interceptors;
 /// </summary>
 public class OutboxInterceptor : SaveChangesInterceptor
 {
-    private readonly ILogger<OutboxInterceptor> _logger;
+    private readonly ILogger? _logger;
 
-    public OutboxInterceptor(ILogger<OutboxInterceptor> logger)
+    public OutboxInterceptor(ILogger? logger = null)
     {
         _logger = logger;
     }
@@ -76,13 +76,13 @@ public class OutboxInterceptor : SaveChangesInterceptor
 
                     outboxMessages.Add(outboxMessage);
 
-                    _logger.LogDebug(
+                    _logger?.LogDebug(
                         "Created outbox message for domain event {EventType}",
                         eventType.Name);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(
+                    _logger?.LogError(
                         ex,
                         "Error creating outbox message for domain event {EventType}",
                         domainEvent.GetType().Name);
@@ -100,7 +100,7 @@ public class OutboxInterceptor : SaveChangesInterceptor
         {
             context.Set<OutboxMessage>().AddRange(outboxMessages);
             
-            _logger.LogInformation(
+            _logger?.LogInformation(
                 "Added {Count} domain events to outbox",
                 outboxMessages.Count);
         }

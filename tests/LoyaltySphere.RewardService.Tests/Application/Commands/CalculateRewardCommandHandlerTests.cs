@@ -8,6 +8,7 @@ using LoyaltySphere.RewardService.Domain.Repositories;
 using LoyaltySphere.RewardService.Domain.Entities;
 using LoyaltySphere.RewardService.Domain.ValueObjects;
 using LoyaltySphere.RewardService.Application.Commands.CalculateReward;
+using LoyaltySphere.RewardService.Application.Interfaces;
 using LoyaltySphere.RewardService.Application.Services;
 using LoyaltySphere.RewardService.Infrastructure.Persistence;
 using LoyaltySphere.RewardService.Infrastructure.Repositories;
@@ -71,7 +72,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
             TransactionId = "txn-123"
         };
 
-        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, _handlerLoggerMock.Object);
+        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
         
         var rule = RewardRule.Create(TenantId, "Standard", "1 point", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -101,7 +102,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
             Currency = "EGP"
         };
 
-        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, _handlerLoggerMock.Object);
+        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
 
         var rule = RewardRule.Create(TenantId, "Standard", "1 point", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -136,7 +137,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
             Currency = "EGP"
         };
 
-        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, _handlerLoggerMock.Object);
+        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
         
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RewardCalculationResult.NoReward("Customer is inactive"));
@@ -164,7 +165,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
             TransactionId = "txn-123"
         };
 
-        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, _handlerLoggerMock.Object);
+        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
 
         var rule = RewardRule.Create(TenantId, "Standard", "1 point", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -199,7 +200,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
             Currency = "EGP"
         };
 
-        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, _handlerLoggerMock.Object);
+        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
 
         var rule = RewardRule.Create(TenantId, "Silver Rule", "1.5 points", 1.5m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -225,7 +226,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RewardCalculationResult.Success(Points.Create(100), Points.Create(100), Points.Create(0), rule, null, 1.0m));
 
-        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, _handlerLoggerMock.Object);
+        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
 
         // Act - Process multiple transactions
         await handler.Handle(new CalculateRewardCommand
@@ -282,7 +283,7 @@ public class CalculateRewardCommandHandlerTests : IDisposable
             TransactionId = "txn-merch-1"
         };
 
-        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, _handlerLoggerMock.Object);
+        var handler = new CalculateRewardCommandHandler(_unitOfWork, _calculationServiceMock.Object, Mock.Of<ICacheService>(), _handlerLoggerMock.Object);
 
         var rule = RewardRule.Create(TenantId, "Standard Rule", "1 point per unit", 1.0m);
         _calculationServiceMock.Setup(s => s.CalculateRewardAsync(It.IsAny<Customer>(), It.IsAny<Money>(), It.IsAny<IEnumerable<RewardRule>>(), It.IsAny<IEnumerable<Campaign>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))

@@ -12,27 +12,27 @@ public class RewardConfiguration : IEntityTypeConfiguration<Reward>
 {
     public void Configure(EntityTypeBuilder<Reward> builder)
     {
-        builder.ToTable("rewards");
+        builder.ToTable("Rewards");
 
         // Primary Key
         builder.HasKey(r => r.Id);
 
         // Properties
         builder.Property(r => r.Id)
-            .HasColumnName("id")
+            .HasColumnName("Id")
             .ValueGeneratedNever(); // Generated in domain
 
         builder.Property(r => r.TenantId)
-            .HasColumnName("tenant_id")
+            .HasColumnName("TenantId")
             .HasMaxLength(100)
             .IsRequired();
 
         builder.Property(r => r.CustomerId)
-            .HasColumnName("customer_id")
+            .HasColumnName("CustomerId")
             .IsRequired();
 
         builder.Property(r => r.CustomerExternalId)
-            .HasColumnName("customer_external_id")
+            .HasColumnName("CustomerExternalId")
             .HasMaxLength(100)
             .IsRequired();
 
@@ -40,7 +40,7 @@ public class RewardConfiguration : IEntityTypeConfiguration<Reward>
         builder.OwnsOne(r => r.PointsAwarded, points =>
         {
             points.Property(p => p.Value)
-                .HasColumnName("points_awarded")
+                .HasColumnName("PointsAwarded")
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
         });
@@ -49,61 +49,61 @@ public class RewardConfiguration : IEntityTypeConfiguration<Reward>
         builder.OwnsOne(r => r.TransactionAmount, money =>
         {
             money.Property(m => m.Amount)
-                .HasColumnName("transaction_amount")
+                .HasColumnName("TransactionAmount")
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
 
             money.Property(m => m.Currency)
-                .HasColumnName("currency")
+                .HasColumnName("Currency")
                 .HasMaxLength(3)
                 .IsRequired();
         });
 
         builder.Property(r => r.RewardType)
-            .HasColumnName("reward_type")
+            .HasColumnName("RewardType")
             .HasMaxLength(50)
             .IsRequired();
 
         builder.Property(r => r.Source)
-            .HasColumnName("source")
+            .HasColumnName("Source")
             .HasMaxLength(50)
             .IsRequired();
 
         builder.Property(r => r.TransactionId)
-            .HasColumnName("transaction_id")
+            .HasColumnName("TransactionId")
             .HasMaxLength(100);
 
         builder.Property(r => r.CampaignId)
-            .HasColumnName("campaign_id")
+            .HasColumnName("CampaignId")
             .HasMaxLength(100);
 
         builder.Property(r => r.MerchantId)
-            .HasColumnName("merchant_id")
+            .HasColumnName("MerchantId")
             .HasMaxLength(100);
 
         builder.Property(r => r.Description)
-            .HasColumnName("description")
+            .HasColumnName("Description")
             .HasMaxLength(500)
             .IsRequired();
 
         builder.Property(r => r.ProcessedAt)
-            .HasColumnName("processed_at")
+            .HasColumnName("ProcessedAt")
             .IsRequired();
 
         builder.Property(r => r.IsProcessed)
-            .HasColumnName("is_processed")
+            .HasColumnName("IsProcessed")
             .IsRequired();
 
         builder.Property(r => r.ProcessingError)
-            .HasColumnName("processing_error")
+            .HasColumnName("ProcessingError")
             .HasMaxLength(1000);
 
         builder.Property(r => r.CreatedAt)
-            .HasColumnName("created_at")
+            .HasColumnName("CreatedAt")
             .IsRequired();
 
         builder.Property(r => r.UpdatedAt)
-            .HasColumnName("updated_at");
+            .HasColumnName("UpdatedAt");
 
         // Indexes for performance
         builder.HasIndex(r => r.TenantId)

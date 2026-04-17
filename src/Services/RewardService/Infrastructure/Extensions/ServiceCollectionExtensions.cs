@@ -99,26 +99,90 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds Redis caching services.
+    /// Adds Redis caching services with production-grade configuration.
+    /// - SSL/TLS for Redis Cloud connections
+    /// - Graceful degradation (app doesn't crash if Redis is down)
+    /// - Connection event logging
+    /// - Health check integration
+    /// - Tenant-aware cache service
+    /// - SignalR Redis backplane for scale-out
     /// </summary>
     public static IServiceCollection AddCaching(
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+
+        // Parse connection string into ConfigurationOptions for fine-grained control
+        var redisOptions = ConfigurationOptions.Parse(redisConnectionString!);
+        redisOptions.AbortOnConnectFail = false;       // Don't crash if Redis is down at startup
+        redisOptions.ConnectRetry = 3;                 // Retry connection up to 3 times
+        redisOptions.ConnectTimeout = 5000;            // 5-second connection timeout
+        redisOptions.SyncTimeout = 3000;               // 3-second sync operation timeout
+        redisOptions.AsyncTimeout = 5000;              // 5-second async operation timeout
+        redisOptions.ReconnectRetryPolicy = new ExponentialRetry(5000); // Exponential backoff on reconnect
+        redisOptions.Ssl = redisOptions.Ssl;           // Respect ssl= in connection string
+        redisOptions.ClientName = "LoyaltySphere-RewardService";
+
+        // Register IConnectionMultiplexer as singleton with event logging
         services.AddSingleton<IConnectionMultiplexer>(sp =>
         {
-            var redisConnection = configuration.GetConnectionString("Redis");
-            return ConnectionMultiplexer.Connect(redisConnection!);
+            var logger = sp.GetRequiredService<ILogger<IConnectionMultiplexer>>();
+
+            var multiplexer = ConnectionMultiplexer.Connect(redisOptions);
+
+            multiplexer.ConnectionFailed += (sender, args) =>
+            {
+                logger.LogWarning(
+                    "Redis connection FAILED: {EndPoint}, {FailureType}, {Exception}",
+                    args.EndPoint,
+                    args.FailureType,
+                    args.Exception?.Message ?? "none");
+            };
+
+            multiplexer.ConnectionRestored += (sender, args) =>
+            {
+                logger.LogInformation(
+                    "Redis connection RESTORED: {EndPoint}, {FailureType}",
+                    args.EndPoint,
+                    args.FailureType);
+            };
+
+            multiplexer.ErrorMessage += (sender, args) =>
+            {
+                logger.LogError("Redis server error: {Message}", args.Message);
+            };
+
+            multiplexer.InternalError += (sender, args) =>
+            {
+                logger.LogError(args.Exception, "Redis internal error on {EndPoint}", args.EndPoint);
+            };
+
+            if (multiplexer.IsConnected)
+            {
+                logger.LogInformation("✅ Redis connected successfully to {EndPoints}", string.Join(", ", redisOptions.EndPoints));
+            }
+            else
+            {
+                logger.LogWarning("⚠️ Redis connection deferred — will retry in background. App continues without cache.");
+            }
+
+            return multiplexer;
         });
 
+        // Distributed cache backed by Redis
         services.AddStackExchangeRedisCache(options =>
         {
-            options.Configuration = configuration.GetConnectionString("Redis");
+            options.ConfigurationOptions = redisOptions;
             options.InstanceName = "LoyaltySphere:";
         });
 
+        // Tenant-aware cache service (application-layer abstraction)
+        services.AddScoped<Application.Interfaces.ICacheService, Caching.RedisCacheService>();
+
         return services;
     }
+
 
     /// <summary>
     /// Adds message bus services using MassTransit and RabbitMQ.
@@ -148,16 +212,29 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds real-time SignalR services.
+    /// Adds real-time SignalR services with Redis backplane for horizontal scaling.
     /// </summary>
-    public static IServiceCollection AddRealTimeServices(this IServiceCollection services)
+    public static IServiceCollection AddRealTimeServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        services.AddSignalR(options =>
+        var signalRBuilder = services.AddSignalR(options =>
         {
             options.EnableDetailedErrors = true;
             options.KeepAliveInterval = TimeSpan.FromSeconds(15);
             options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
         });
+
+        // Configure Redis backplane if connection string is provided
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            signalRBuilder.AddStackExchangeRedis(redisConnectionString, options =>
+            {
+                options.Configuration = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+                options.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("LoyaltySphere-SignalR");
+            });
+        }
 
         return services;
     }
@@ -188,22 +265,14 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddHealthChecks();
-            // PostgreSQL health check commented out - requires AspNetCore.HealthChecks.Npgsql package
-            // .AddNpgSql(
-            //     configuration.GetConnectionString("DefaultConnection")!,
-            //     name: "postgresql",
-            //     tags: new[] { "db", "postgresql" })
-            // Redis health check commented out - requires AspNetCore.HealthChecks.Redis package
-            // .AddRedis(
-            //     configuration.GetConnectionString("Redis")!,
-            //     name: "redis",
-            //     tags: new[] { "cache", "redis" });
-            // RabbitMQ health check commented out - requires package
-            // .AddRabbitMQ(
-            //     configuration["RabbitMQ:Host"]!,
-            //     name: "rabbitmq",
-            //     tags: new[] { "messaging", "rabbitmq" });
+        // Register RedisHealthCheck as singleton so it can be resolved by the health check system
+        services.AddSingleton<Caching.RedisHealthCheck>();
+
+        services.AddHealthChecks()
+            .AddCheck<Caching.RedisHealthCheck>(
+                "redis",
+                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                tags: new[] { "cache", "redis" });
 
         return services;
     }

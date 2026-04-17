@@ -11,50 +11,50 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
-        builder.ToTable("customers");
+        builder.ToTable("Customers");
 
         // Primary Key
         builder.HasKey(c => c.Id);
 
         // Properties
         builder.Property(c => c.Id)
-            .HasColumnName("id")
+            .HasColumnName("Id")
             .ValueGeneratedNever();
 
         builder.Property(c => c.TenantId)
-            .HasColumnName("tenant_id")
+            .HasColumnName("TenantId")
             .HasMaxLength(100)
             .IsRequired();
 
         builder.Property(c => c.CustomerId)
-            .HasColumnName("customer_id")
+            .HasColumnName("CustomerId")
             .HasMaxLength(100)
             .IsRequired();
 
         builder.Property(c => c.FirstName)
-            .HasColumnName("first_name")
+            .HasColumnName("FirstName")
             .HasMaxLength(100)
             .IsRequired();
 
         builder.Property(c => c.LastName)
-            .HasColumnName("last_name")
+            .HasColumnName("LastName")
             .HasMaxLength(100)
             .IsRequired();
 
         builder.Property(c => c.Email)
-            .HasColumnName("email")
+            .HasColumnName("Email")
             .HasMaxLength(255)
             .IsRequired();
 
         builder.Property(c => c.PhoneNumber)
-            .HasColumnName("phone_number")
+            .HasColumnName("PhoneNumber")
             .HasMaxLength(20);
 
         // Value Objects - Points
         builder.OwnsOne(c => c.PointsBalance, points =>
         {
             points.Property(p => p.Value)
-                .HasColumnName("points_balance")
+                .HasColumnName("PointsBalance")
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
         });
@@ -62,30 +62,30 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.OwnsOne(c => c.LifetimePoints, points =>
         {
             points.Property(p => p.Value)
-                .HasColumnName("lifetime_points")
+                .HasColumnName("LifetimePoints")
                 .HasColumnType("decimal(18,2)")
                 .IsRequired();
         });
 
         builder.Property(c => c.EnrolledAt)
-            .HasColumnName("enrolled_at")
+            .HasColumnName("EnrolledAt")
             .IsRequired();
 
         builder.Property(c => c.IsActive)
-            .HasColumnName("is_active")
+            .HasColumnName("IsActive")
             .IsRequired();
 
         builder.Property(c => c.Tier)
-            .HasColumnName("tier")
+            .HasColumnName("Tier")
             .HasMaxLength(50)
             .IsRequired();
 
         builder.Property(c => c.CreatedAt)
-            .HasColumnName("created_at")
+            .HasColumnName("CreatedAt")
             .IsRequired();
 
         builder.Property(c => c.UpdatedAt)
-            .HasColumnName("updated_at");
+            .HasColumnName("UpdatedAt");
 
         // Indexes
         builder.HasIndex(c => c.TenantId)

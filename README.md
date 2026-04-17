@@ -63,7 +63,8 @@ docker compose up -d
 # 3. Deploy automatically
 ```
 
-**Live Demo:** https://loyalty-sphere-ui.onrender.com
+**Live Demo (Frontend):** https://loyalty-sphere-ui.onrender.com  
+**Live API (Backend):** http://loyaltysphere.runasp.net/swagger
 
 ### Using Pre-built Images (Docker Hub)
 

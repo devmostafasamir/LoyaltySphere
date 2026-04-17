@@ -13,11 +13,11 @@ namespace LoyaltySphere.RewardService.Infrastructure.Persistence.Interceptors;
 public class TenantInterceptor : SaveChangesInterceptor
 {
     private readonly ITenantContext _tenantContext;
-    private readonly ILogger<TenantInterceptor> _logger;
+    private readonly ILogger? _logger;
 
     public TenantInterceptor(
         ITenantContext tenantContext,
-        ILogger<TenantInterceptor> logger)
+        ILogger? logger = null)
     {
         _tenantContext = tenantContext;
         _logger = logger;
@@ -58,7 +58,7 @@ public class TenantInterceptor : SaveChangesInterceptor
             // If we're using InMemoryDatabase for tests, we can skip the tenant check
             if (context.Database.IsRelational())
             {
-                _logger.LogWarning("Attempting to save changes without tenant context");
+                _logger?.LogWarning("Attempting to save changes without tenant context");
                 throw new InvalidOperationException("Tenant context is required for save operations");
             }
             return;
@@ -86,7 +86,7 @@ public class TenantInterceptor : SaveChangesInterceptor
                 {
                     tenantIdProperty.CurrentValue = tenantId;
                     
-                    _logger.LogDebug(
+                    _logger?.LogDebug(
                         "Set tenant_id to {TenantId} for entity {EntityType}",
                         tenantId,
                         entry.Entity.GetType().Name);
@@ -97,7 +97,7 @@ public class TenantInterceptor : SaveChangesInterceptor
                     var entityTenantId = tenantIdProperty.CurrentValue.ToString();
                     if (entityTenantId != tenantId)
                     {
-                        _logger.LogError(
+                        _logger?.LogError(
                             "Tenant mismatch! Entity has tenant_id {EntityTenantId} but current tenant is {CurrentTenantId}",
                             entityTenantId,
                             tenantId);
@@ -112,7 +112,7 @@ public class TenantInterceptor : SaveChangesInterceptor
             {
                 if (tenantIdProperty.IsModified)
                 {
-                    _logger.LogError(
+                    _logger?.LogError(
                         "Attempted to modify tenant_id for entity {EntityType}",
                         entry.Entity.GetType().Name);
                     
