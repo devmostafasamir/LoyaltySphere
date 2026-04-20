@@ -24,7 +24,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
     
     <!-- MediatR for CQRS -->
-    <PackageReference Include="MediatR" Version="12.2.0" />
+    <PackageReference Include="MediatR" Version="14.1.0" />
     
     <!-- FluentValidation -->
     <PackageReference Include="FluentValidation" Version="11.9.0" />
